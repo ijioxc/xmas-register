@@ -523,8 +523,11 @@ const QBUDGET = +q.get('budget') || 26, MINPX = 0.45e6;
 let ms = await bench();
 const ms0 = ms, px0 = W * H;
 for (let k = 0; k < 4 && !q.has('px') && ms > QBUDGET && MAXPX > MINPX; k++) {
+  const prevPx = MAXPX, prevMs = ms;
   MAXPX = Math.max(MINPX, MAXPX * Math.min(0.7, (QBUDGET / ms) ** 1.5));
   measure(); ms = await bench();
+  // 降了像素卻沒變快 → 是被限速 (iPhone 低耗電模式 / 分頁在背景 = 最多 30 fps)，不是手機跑不動：恢復上一級，停止降
+  if (ms > prevMs * 0.85) { MAXPX = prevPx; measure(); ms = prevMs; break; }
 }
 window.__frameMs = ms;
 window.__quality = { ms0: +ms0.toFixed(1), px0, ms: +ms.toFixed(1), px: W * H, W, H };
