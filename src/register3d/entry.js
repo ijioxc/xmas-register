@@ -508,6 +508,8 @@ addEventListener('resize', () => { measure(); if (!playing) draw(); });
 // ---- 開場：等剪紙圖載好，先在背景把棋盤畫一次 (編譯 shader、量速度)，再顯示鑰匙孔 ----
 measure();
 await viewD.cutReady;
+await document.fonts?.ready;   // 標題字型載好才量得準
+fitCover();
 const fixed = q.has('step') ? DUR : q.has('t') ? Math.max(0, +q.get('t')) : q.has('u') ? null : undefined;   // ?step= (看表單) 直接停在定格
 view.u = 1.3; draw(); view.u = 0.92; draw();   // 第一次：編譯棋盤＋鑰匙孔窗 (不計時)
 // 自動畫質：在載入動畫後面真的連播幾格 (掉到底的鑰匙孔窗 ↔ 棋盤定格輪流)，量實際每格間隔；
@@ -543,6 +545,27 @@ if (fixed !== undefined) {                 // 檢查用定格：?t=秒數 或 ?u
   body.classList.add('ready');
 }
 draw();
+// 封面「往上滑」箭頭放在鑰匙孔下緣：把第 0 層鑰匙孔最底點 (模板 (0, RB)) 投影到畫面，寫進 CSS 變數 --khb
+// 封面版面：鑰匙孔放在「上緣 T」到「標題上方留給箭頭的位置 B」之間；矮螢幕自動縮小 (aw 變大)，高螢幕維持原本大小
+function fitCover() {
+  const AW0 = (P.aw0 ??= P.aw), AY0 = (P.ay0 ??= P.ay);   // 原始值 (函式在上面就會被呼叫，所以存在 P 裡)
+  const bt = document.querySelector('.over .bottom');
+  if (!bt) return;
+  const sr = stage.getBoundingClientRect(), asp = sr.width / sr.height;
+  const T = 0.115, B = Math.max(T + 0.3, (bt.getBoundingClientRect().top - sr.top - 14) / sr.height);   // 箭頭在鑰匙孔裡 → 底只留 14px
+  P.aw = Math.max(AW0, 1450 * asp / (B - T));            // 鑰匙孔全高 = 330 + RB ≈ 1450 海報單位
+  P.ay = AY0; ASPECT = asp; placeCameraA(0, 0); camera.updateMatrixWorld();
+  const fy = (z) => (1 - new THREE.Vector3(0, 0, z).project(camera).y) / 2;
+  // 高螢幕鑰匙孔不再放大 (會壓到日期) → 底部貼齊 B，箭頭緊接著標題；矮螢幕剛好塞滿 T–B
+  P.ay = AY0 + (fy(RB / CT) - B) * P.aw / asp;            // 正 = 往上
+}
+function placeKeyholeCue() {
+  placeCameraA(0, 0); camera.updateMatrixWorld();
+  const p = new THREE.Vector3(0, 0, RB / CT).project(camera);
+  stage.style.setProperty('--khb', ((1 - p.y) / 2 * 100).toFixed(2) + '%');
+}
+placeKeyholeCue();
+addEventListener('resize', () => requestAnimationFrame(() => { if (!playing && !done) { fitCover(); draw(); } placeKeyholeCue(); }));
 window.__ready = true;
 
 // ---- 傳令兔對話框用：把兔子嘴巴、腳底投影到畫面 (0–1，未位移的畫布座標) ----
