@@ -391,7 +391,9 @@ export function createViewD(renderer) {
       camera.updateMatrixWorld();
       const p = C3.clone().project(camera);
       const sx = (cam.align.x - p.x) * cam.alignK, sy = (cam.align.y - p.y) * cam.alignK;
-      camera.setViewOffset(2, 2, -sx, sy, 2, 2);
+      // setViewOffset 會把 aspect 改成 fullWidth/fullHeight → 寬用 2·aspect，直幅畫面才不會被擠窄 (正方形時跟原本一樣)
+      const a = camera.aspect;
+      camera.setViewOffset(2 * a, 2, -sx * a, sy, 2 * a, 2);
     }
   }
   set(1);

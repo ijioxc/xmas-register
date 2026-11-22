@@ -10,7 +10,7 @@
 // 紙的顏色、陰影、光全部照 2D 公式，寫在「海報座標」裡（每片紙自己的座標），
 // 換視角時顏色會黏在紙上走。
 import * as THREE from 'three';
-import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js';
+import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=2';   // ?v= 改版就加 1，避免瀏覽器用舊快取
 const tune = { ...TUNE_DEFAULTS };   // 用 3D 編輯頁定稿的滑桿預設值
 // 對話框浮在上面 (預設) → 愛麗絲吊高、往右一點讓位；矮手機畫面上緣比較低，提少一點免得頭被切掉 (?ay= ?ax= 可調)
 { const qq = new URLSearchParams(location.search);
@@ -307,13 +307,32 @@ function grain(S) { const k = Math.min(1024, Math.round(S / 2)); return grainCac
 // TURN1–P1  第一段定格 (乾淨的立體棋盤)，滑鼠搖鏡頭淡入
 // P1–UMAX   第二段：鏡頭不動，剪紙棋子出場 (節奏在 cutouts3d.js 的 ANIM_DEFAULTS)；UMAX 定格
 const viewD = createViewD(renderer);
+
+// ---- 掉落最後一段：樹尖黑孔平順放大 ----
+// 原本 L = u·LMAX 等速穿過紙層，最後幾層 1/(1/s − D) 會爆增 → 黑孔 2 格內從小變滿版 (跳一下)。
+// 改成：u ≥ A 之後，樹尖深度 z 用「對數二次曲線」縮小 (放大速度連續、逐漸加快)，u = B 時剛好蓋滿畫面。
+const DIVE = { A: 0.7, B: 0.97, zEnd: 0.15, D0: 0.85 };   // D0 = 棋盤開始往下降
+const fallL = (() => {
+  const lr = -Math.log(P.ratio), A1 = Math.pow(P.ratio, -N) + 1, beta = LMAX * lr;   // z(u) = A1 − e^{βu}
+  const za = A1 - Math.exp(beta * DIVE.A), ga = Math.log(za), ra = -beta * Math.exp(beta * DIVE.A) / za;
+  const dx = DIVE.B - DIVE.A, c = (Math.log(DIVE.zEnd) - ga - ra * dx) / (dx * dx);
+  return (u) => {
+    u = Math.min(1, u);
+    if (u <= DIVE.A) return u * LMAX;
+    const x = u - DIVE.A, z = Math.exp(ga + ra * x + c * x * x);
+    // 蓋滿之後 (B–1) 把剩下的最後一層紙也穿過去，u = 1 時跟原本一樣「全部掉過」，切到棋盤不會透出綠紙
+    return lerp(Math.log(A1 - z) / lr, LMAX, smooth(DIVE.B, 1, u));
+  };
+})();
 const PH = { WIN0: 0.8, TURN1: 1.55 };   // WIN0 = 開始往下降；窗什麼時候出現、多快變亮看滑桿 fade0 / fade1
 const P1 = 1.6;     // 第一段 (乾淨的立體棋盤) 定格
 const UMAX = 2.6;   // 第二段 (剪紙棋子出場) 定格
 const dState = { on: false, win: false };
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * t * (t * (6 * t - 15) + 10); };
 function camD(u) {
-  const dist = lerp(tune.enterH, tune.dist, sstep(PH.WIN0, PH.TURN1, u));
+  // 降落用「對數」插值 (畫面放大倍率等速感) ＋ 先快後慢：黑孔蓋滿畫面時棋盤正在快速靠近，不會停在一條小棋盤上
+  const x = Math.min(1, Math.max(0, (u - DIVE.D0) / (PH.TURN1 - DIVE.D0)));
+  const dist = tune.enterH * Math.pow(tune.dist / tune.enterH, 1 - (1 - x) ** 3);
   const k = sstep(tune.turn0, PH.TURN1, u);
   const fade = sstep(tune.fade0, tune.fade1, u);   // 棋盤從暗慢慢浮現
   // 視角 D 不跟滑鼠搖：鏡頭降到俯 22° 就停住，不會多出別的角度
@@ -324,6 +343,7 @@ function camD(u) {
 const maskHide = new THREE.MeshBasicMaterial({ colorWrite: false });
 const maskShow = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const winCanvas = document.createElement('canvas'), maskCanvas = document.createElement('canvas');
+if (q.has("prof")) window.__win = { winCanvas, maskCanvas };
 function renderWindow(S, SH, cam) {
   for (const c of [winCanvas, maskCanvas]) if (c.width !== S || c.height !== SH) { c.width = S; c.height = SH; }
   const w = winCanvas.getContext('2d'), m = maskCanvas.getContext('2d');
@@ -339,11 +359,16 @@ function renderWindow(S, SH, cam) {
   renderer.render(scene, cam);
   sheets.forEach((sh, i) => { sh.mesh.material = saved[i]; sh.mesh.visible = vis[i]; }); tip.material = tipMat;
   m.globalCompositeOperation = 'copy'; m.drawImage(glCanvas, 0, 0);
+  // 掉到底 (背景已經全黑) → 窗外被擋住的棋盤慢慢浮現，u = 1 切成直接畫棋盤時不會跳一下 (原本只剩一條細窗)
+  const full = sstep(0.93, 0.99, view.u);
+  if (full > 0) { m.globalCompositeOperation = 'source-over'; m.globalAlpha = full; m.fillStyle = '#fff'; m.fillRect(0, 0, S, SH); m.globalAlpha = 1; }
   w.globalCompositeOperation = 'destination-in'; w.drawImage(maskCanvas, 0, 0);
   w.globalCompositeOperation = 'source-over';
 }
 
 // ════════════════ 以下是報名網頁新加的 ════════════════
+// 剪紙提早出場：鏡頭還在降最後一段，愛麗絲就開始掉 → 不會停在空棋盤上 (原本 gA 1.75 / hA 1.95 / rA 2.2)
+Object.assign(tune, { gA: 1.28, gSnap: 1.68, gB: 1.90, hA: 1.60, hB: 2.10, rA: 1.95, rB: 2.45 });
 viewD.tune(tune);
 
 // 棋盤鏡頭配合直幅：橫向視野 = 原本正方形的 dz 倍，直向自動算
@@ -361,7 +386,7 @@ function render(canvas, W, H) {
   const ctx = canvas.getContext('2d');
   const bg = ctx.createLinearGradient(0, 0, W, H);
   bg.addColorStop(0, PAPER[0]); bg.addColorStop(1, PAPER[1]);
-  ctx.fillStyle = bgVisible && !dState.on ? bg : '#000'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = bgVisible && !dState.on ? bg : HOLE; ctx.fillRect(0, 0, W, H);
 
   renderer.setPixelRatio(1);
   renderer.setSize(W, H, false);
@@ -392,7 +417,7 @@ function render(canvas, W, H) {
 function applyView() {
   placeCameraA(0, 0);
   fitCamD();
-  fall(Math.min(1, view.u) * LMAX);
+  fall(fallL(view.u));
   dState.on = view.u >= 1;
   dState.win = !dState.on && view.u > tune.fade0;
   if (dState.on || dState.win) {
@@ -434,11 +459,13 @@ function draw() { applyView(); render(canvas, W, H); }
 // ---- 播放 ----
 const body = document.body;
 let t0 = null, playing = false, done = false;
+const PROF = q.has('prof') ? (window.__prof = []) : null;   // ?prof：記錄每一格 draw 花幾 ms
 function tick(now) {
   if (t0 === null) t0 = now;
   const t = (now - t0) / 1000;
   view.u = uAt(t);
-  draw();
+  const tp = performance.now(); draw();
+  if (PROF) PROF.push([+view.u.toFixed(3), +(performance.now() - tp).toFixed(2)]);
   if (t < DUR) requestAnimationFrame(tick);
   else { playing = false; done = true; body.classList.add('landed'); dispatchEvent(new Event('entry:landed')); }
 }
