@@ -561,7 +561,7 @@ for (let k = 0; k < 4 && !q.has('px') && ms > QBUDGET && MAXPX > MINPX; k++) {
 window.__frameMs = ms;
 window.__quality = { ms0: +ms0.toFixed(1), px0, ms: +ms.toFixed(1), px: W * H, W, H };
 console.log(`[入口] 每格 ${ms0.toFixed(0)}→${ms.toFixed(0)} ms，畫布 ${W}×${H} (${(W * H / 1e6).toFixed(2)}M px)`);
-if (ms > (+q.get('slow') || 90) && !q.has('force3d')) throw Object.assign(new Error('太慢'), { slow: true, ms });
+// 不再換 2D 版：慢的手機就用自動降低的畫質跑 3D
 if (fixed !== undefined) {                 // 檢查用定格：?t=秒數 或 ?u=
   view.u = fixed === null ? Math.min(UMAX, Math.max(0, +q.get('u'))) : uAt(fixed);
   done = true;

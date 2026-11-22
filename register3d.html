@@ -660,7 +660,7 @@
 </script>
 
 <script>
-  // ───────── 報名表單（送出邏輯跟 register.html 一樣，後端不用改）─────────
+  // ───────── 報名表單─────────
   // 正式網址：Google Apps Script 部署的 …/exec；空字串 = 原型模式，只顯示畫面不送資料；測試可用 ?api=網址 臨時指定
   const Q = new URLSearchParams(location.search);
   const SUBMIT_URL = Q.get('api') ?? 'https://script.google.com/macros/s/AKfycbyjaxHCTrjMPn6Y62yRuPg3bq7Gox0zjIlHZrppvt1BVDnB9n5xwEl5H8WQasu7YLUh/exec';
@@ -1056,14 +1056,12 @@
   else show(1);
 </script>
 <script type="module">
-  // 3D 載不起來（手機不支援 WebGL）或太慢 → 換 2D 版報名頁
+  // 已經沒有 2D 版：3D 載不起來 (瀏覽器不支援 WebGL) 就在載入畫面直接說
   const v = '?v=' + Date.now();
   import('./src/register3d/entry.js' + v).catch((e) => {
-    console.warn('[入口] 改用 2D 版', e);
-    // 網址帶上換版原因 (?why=slow-380ms / err-訊息)，手機上看網址就知道是太慢還是出錯
-    const why = e && e.slow ? 'slow-' + Math.round(e.ms) + 'ms' : 'err-' + String((e && e.message) || e).slice(0, 80);
-    const qs = new URLSearchParams(location.search); qs.set('why', why);
-    if (!qs.has('no2d')) location.replace('register.html?' + qs);
+    console.warn('[入口] 3D 載入失敗', e);
+    const p = document.querySelector('#loader p');
+    if (p) p.innerHTML = '這個瀏覽器打不開<br>請用 Safari 或 Chrome 開啟';
   });
 </script>
 </body>
