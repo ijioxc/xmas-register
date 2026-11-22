@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#9bb7ac">
+<title>愛理不理 報名</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+</script>
+<style>
+  /* 報名網頁（3D 入口版）：手機直幅優先；電腦上置中一個手機比例的舞台 */
+  :root {
+    --paper-a: #b7c6be; --paper-b: #9bb7ac;
+    --ink: #111; --heart: #9e1b22; --card: #f3efe4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { color: var(--ink); font-family: Inter, 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased;
+    background: linear-gradient(135deg, var(--paper-a), var(--paper-b)); touch-action: none; }
+  .heart { fill: var(--heart); }
+
+  /* 舞台：手機 = 整個螢幕；電腦 = 中間一條手機比例 */
+  #stage { position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: min(100vw, calc(100dvh * 0.5)); overflow: hidden; background: linear-gradient(135deg, var(--paper-a), var(--paper-b)); }
+  @media (min-width: 700px) { #stage { box-shadow: 0 0 0 1.5px var(--ink), 0 30px 80px rgba(20, 30, 24, .35); } }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* 鑰匙孔畫面上的字（開始掉就淡出） */
+  .over { position: absolute; inset: 0; pointer-events: none; padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
+    padding-top: max(22px, env(safe-area-inset-top)); transition: opacity .35s; opacity: 0; }
+  .ready .over { opacity: 1; }
+  .falling .over { opacity: 0; }
+  .frame { position: absolute; inset: 10px; border: 1.5px solid var(--ink); border-radius: 24px; opacity: .85; }
+  .date { position: absolute; left: 30px; top: max(30px, calc(env(safe-area-inset-top) + 8px)); font-weight: 700; font-size: 40px; line-height: .86; letter-spacing: -.045em; }
+  .date .one { margin-right: .04em; }
+  .date svg { display: inline-block; width: 20px; height: 19px; margin: 0 8px; vertical-align: .1em; }
+  .date small { font-size: 11px; letter-spacing: .06em; font-weight: 500; margin-left: 10px; }
+  .bottom { position: absolute; left: 30px; right: 30px; bottom: calc(30px + env(safe-area-inset-bottom)); }
+  h1 { margin: 0; font-family: 'Noto Sans TC', sans-serif; font-weight: 700; letter-spacing: -.02em; line-height: .95; font-size: 54px; }
+  h1 span { display: block; } h1 span + span { text-align: right; }
+  .info { border-top: 2px solid var(--ink); margin-top: 14px; padding-top: 10px; font-size: 14px; font-weight: 500; line-height: 1.4; }
+  .info b { font-weight: 700; }
+
+  /* 往上滑提示 */
+  #go3d { pointer-events: auto; appearance: none; border: 0; background: none; cursor: pointer; font: inherit; color: var(--ink);
+    display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 12px auto 0; padding: 6px 16px;
+    font-size: 13px; font-weight: 700; letter-spacing: .12em; -webkit-tap-highlight-color: transparent; }
+  #go3d svg { width: 22px; height: 14px; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; animation: nudge 1.6s ease-in-out infinite; }
+  @keyframes nudge { 0%, 100% { transform: translateY(3px); opacity: .5; } 50% { transform: translateY(-3px); opacity: 1; } }
+
+  .grain { position: fixed; inset: 0; z-index: 90; pointer-events: none; mix-blend-mode: overlay; opacity: .3; width: 100%; height: 100%; }
+
+  /* ───────── 定格後：畫面往上推，下方抽出一張牌（表單） ───────── */
+  :root { --sheet: 54%; --shift: -22%; }
+  #c { transition: transform .9s cubic-bezier(.6, 0, .3, 1); }
+  .landed #c { transform: translateY(var(--shift)); }
+  .landed #stage { background: #070605; }
+  .is-done #c { transform: translateY(-34%); }
+  .sheet { position: absolute; left: 8px; right: 8px; bottom: 0; height: var(--sheet); z-index: 5;
+    display: flex; flex-direction: column; container-type: size; color: var(--ink);
+    transform: translateY(105%); transition: transform .7s cubic-bezier(.2, .8, .2, 1.04), height .6s cubic-bezier(.4, 0, .2, 1), color .4s;
+    touch-action: pan-y; }
+  /* 米白牌面 (第 2、3 題、完成)；第 1 題拿掉外框 (.bare)，只剩一層暗色漸層讓字看得清楚 */
+  .sheet::before, .sheet::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; transition: opacity .45s; }
+  .sheet::before { background: var(--card); border: 1.5px solid var(--ink); border-bottom: 0; border-radius: 22px 22px 0 0; box-shadow: 0 -14px 40px rgba(0, 0, 0, .45); }
+  .sheet::after { left: -8px; right: -8px; background: linear-gradient(to bottom, rgba(7, 6, 5, 0), rgba(7, 6, 5, .62) 26%, rgba(7, 6, 5, .85)); opacity: 0; }
+  .sheet.bare { color: var(--card); }
+  .sheet.bare::before { opacity: 0; }
+  .sheet.bare::after { opacity: 1; }
+  .sheet.bare .ix { opacity: 0; }
+  .sheet.bare .bars i { background: var(--card); }
+  .sheet.bare .body { overflow: visible; }
+  .sheet.bare .btn { background: var(--card); color: var(--ink); }
+  .landed .sheet { transform: none; transition-delay: .5s, 0s, 0s; }
+  .is-done .sheet { height: 80%; transition-delay: 0s; }
+  .sheet .ix { transition: opacity .3s; position: absolute; top: 12px; font-weight: 700; font-size: 13px; letter-spacing: -.02em; display: flex; align-items: center; gap: 3px; }
+  .sheet .ix svg { width: 10px; height: 9px; }
+  .sheet .ix.l { left: 16px; } .sheet .ix.r { right: 16px; }
+
+  .head { padding: 12px 18px 0; text-align: center; }
+  .bars { display: flex; gap: 6px; justify-content: center; margin: 6px auto 0; width: 120px; }
+  .bars i { flex: 1; height: 3px; border-radius: 2px; background: var(--ink); opacity: .18; transition: opacity .3s; }
+  .bars i.on { opacity: 1; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+  .body { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px 8px; overscroll-behavior: contain; }
+  .foot { padding: 8px 18px calc(14px + env(safe-area-inset-bottom)); display: flex; gap: 10px; align-items: center; }
+
+  .step { display: none; }
+  .step.on { display: block; animation: slidein .4s cubic-bezier(.2, .8, .2, 1); }
+  .step.on.back { animation-name: slideback; }
+  @keyframes slidein { from { opacity: 0; transform: translateX(28px); } }
+  @keyframes slideback { from { opacity: 0; transform: translateX(-28px); } }
+  .step h3 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+  .step h3 em { font-style: normal; font-family: Inter; margin-right: 8px; }
+  .step .hint { margin: 0 0 14px; font-size: 13px; font-weight: 500; opacity: .65; }
+
+  /* 系所：十張撲克牌散開成兩排扇形，一張張彈出來；有紙的厚度和落影 */
+  .depts { --cw: min(19cqw, 23cqh, 84px); --ch: calc(var(--cw) * 1.4); --sx: calc(var(--cw) * .95);
+    position: relative; height: calc(var(--ch) * 2 + 34px); margin-top: 4px; perspective: 900px; }
+  .dept { --tx: calc(var(--j) * var(--sx) + var(--dx)); --ty: calc(var(--row) * (var(--ch) + 14px) + var(--j) * var(--j) * 4px + var(--dy));
+    --rot: calc(var(--j) * 5deg + var(--jr));
+    position: absolute; left: 50%; top: 8px; width: var(--cw); height: var(--ch); margin-left: calc(var(--cw) / -2);
+    border-radius: 7px; background: #fbf8f0; color: var(--ink); z-index: calc(var(--row) + 1);
+    cursor: pointer; display: grid; place-items: center; -webkit-tap-highlight-color: transparent;
+    transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) rotateX(10deg);
+    transition: transform .35s cubic-bezier(.2, .9, .25, 1.25), box-shadow .3s, background .2s, color .2s, filter .3s;
+    box-shadow: 0 1px 0 #e4d9c2, 0 2px 0 #d4c6a8, 0 3px 0 #c2b290, 0 10px 14px rgba(0, 0, 0, .5), 0 20px 26px rgba(0, 0, 0, .25); }
+  .dept::before { content: ''; position: absolute; inset: 4px; border: 1px solid rgba(17, 17, 17, .28); border-radius: 4px; pointer-events: none; }
+  .landed .step.on .dept { animation: pop .6s cubic-bezier(.2, .9, .3, 1.15) both; animation-delay: calc(var(--i) * 55ms + .15s); }
+  .landed .first .step.on .dept { animation-delay: calc(var(--i) * 55ms + .75s); }
+  @keyframes pop { from { opacity: 0; transform: translate(calc(var(--tx) * .3), calc(var(--ty) + 240px)) rotate(calc(var(--rot) * -3)) rotateX(-70deg) scale(.7); } }
+  .dept input, .opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .dept .nm { writing-mode: vertical-rl; font-size: calc(var(--cw) * .24); font-weight: 700; letter-spacing: .12em; }
+  .dept .s { position: absolute; font-size: 11px; line-height: 1; }
+  .dept .s.tl { left: 7px; top: 7px; } .dept .s.br { right: 7px; bottom: 7px; transform: rotate(180deg); }
+  .dept .s.r { color: var(--heart); }
+  .dept:hover { transform: translate(var(--tx), calc(var(--ty) - 6px)) rotate(var(--rot)) rotateX(4deg); }
+  .depts:has(input:checked) .dept { filter: brightness(.72); }
+  .depts .dept:has(input:checked) { background: var(--heart); color: var(--card); z-index: 5; filter: none;
+    transform: translate(var(--tx), calc(var(--ty) - 22px)) rotate(0deg) rotateX(0deg) translateZ(60px) scale(1.12);
+    box-shadow: 0 1px 0 #7d151b, 0 2px 0 #6a1015, 0 3px 0 #560c10, 0 18px 22px rgba(0, 0, 0, .55), 0 34px 40px rgba(0, 0, 0, .3); }
+  .dept:has(input:checked)::before { border-color: rgba(243, 239, 228, .45); }
+  .dept:has(input:checked) .s { color: var(--card); }
+  .dept:has(input:focus-visible), .opt:has(input:focus-visible) { outline: 3px solid var(--ember, #c45a04); outline-offset: 3px; }
+
+  /* 第 2、3 題、完成卡共用：浮在棋盤上的立體紙牌 (紙厚度＋落影＋內框)，一張張彈出來 */
+  .pc { position: relative; background: #fbf8f0; color: var(--ink); border-radius: 10px;
+    transform: rotate(var(--rot, 0deg)) rotateX(8deg);
+    box-shadow: 0 1px 0 #e4d9c2, 0 2px 0 #d4c6a8, 0 3px 0 #c2b290, 0 12px 16px rgba(0, 0, 0, .5), 0 24px 30px rgba(0, 0, 0, .25); }
+  .pc::before { content: ''; position: absolute; inset: 5px; border: 1px solid rgba(17, 17, 17, .28); border-radius: 6px; pointer-events: none; }
+  .landed .step.on .pc { animation: pop2 .65s cubic-bezier(.2, .9, .3, 1.15) both; animation-delay: calc(var(--i, 0) * 90ms + .1s); }
+  @keyframes pop2 { from { opacity: 0; transform: translateY(240px) rotate(calc(var(--rot, 0deg) * -4)) rotateX(-70deg) scale(.7); } }
+  .pc .s { position: absolute; font-size: 16px; line-height: 1; }
+  .pc .s.tl { left: 11px; top: 11px; } .pc .s.br { right: 11px; bottom: 11px; transform: rotate(180deg); }
+  .pc .s.r { color: var(--heart); }
+
+  /* 系會員：兩張直立的牌 */
+  .member { display: flex; justify-content: center; gap: 16px; perspective: 900px; padding-top: 22px; }
+  .opt { width: min(41cqw, 36cqh); aspect-ratio: 5 / 7; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
+    transition: transform .35s cubic-bezier(.2, .9, .25, 1.25), background .2s, color .2s, filter .3s, box-shadow .3s; }
+  .opt .lb { font-weight: 700; font-size: 15px; letter-spacing: .06em; }
+  .opt b { font-family: Inter; font-size: min(13cqw, 11cqh); line-height: .9; letter-spacing: -.04em; }
+  .opt b small { display: block; font-size: 13px; letter-spacing: .1em; margin-top: 6px; font-family: 'Noto Sans TC'; }
+  .member:has(input:checked) .opt { filter: brightness(.72); }
+  .member .opt:has(input:checked) { background: var(--heart); color: var(--card); filter: none;
+    transform: translateY(-16px) rotate(0deg) rotateX(0deg) translateZ(40px) scale(1.06);
+    box-shadow: 0 1px 0 #7d151b, 0 2px 0 #6a1015, 0 3px 0 #560c10, 0 18px 22px rgba(0, 0, 0, .55), 0 34px 40px rgba(0, 0, 0, .3); }
+  .opt:has(input:checked)::before { border-color: rgba(243, 239, 228, .45); }
+  .opt:has(input:checked) .s { color: var(--card); }
+
+  /* 學號姓名：寫在一張牌上 */
+  .step[data-step="3"] { perspective: 1000px; }
+  .card3 { padding: 18px 26px 16px; transform: rotate(var(--rot, 0deg)) rotateX(4deg); }
+  .card3 .s.tl { left: 10px; top: 9px; font-size: 13px; } .card3 .s.br { right: 10px; bottom: 9px; font-size: 13px; }
+
+  /* 學號、姓名 */
+  .field + .field { margin-top: 4px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
+  .field input { width: 100%; border: 0; border-bottom: 2px solid var(--ink); background: rgba(17,17,17,.05); color: var(--ink);
+    padding: 11px 10px 9px; font: inherit; font-size: 20px; font-weight: 700; letter-spacing: .04em; border-radius: 6px 6px 0 0; outline: none; }
+  .field input::placeholder { color: rgba(17,17,17,.3); font-weight: 500; }
+  .field input:focus { background: rgba(17,17,17,.09); }
+  .field .err { min-height: 15px; font-size: 13px; color: var(--heart); font-weight: 700; margin-top: 4px; }
+  .msg { font-size: 14px; font-weight: 700; color: var(--heart); line-height: 1.5; margin-top: 6px; }
+  .msg:empty { display: none; }
+
+  .btn { appearance: none; border: 0; cursor: pointer; background: var(--ink); color: var(--card); flex: 1;
+    border-radius: 999px; padding: 15px 22px; font: inherit; font-weight: 700; font-size: 17px; letter-spacing: .04em;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px; white-space: nowrap; transition: transform .15s, background .15s, opacity .15s; -webkit-tap-highlight-color: transparent; }
+  .btn:active { transform: scale(.97); }
+  .btn svg { width: 16px; height: 15px; fill: var(--heart); }
+  .btn[disabled] { opacity: .3; cursor: not-allowed; }
+  .back-btn { appearance: none; border: 1.5px solid var(--ink); background: none; color: var(--ink); border-radius: 999px; width: 50px; height: 50px; flex: none;
+    font: inherit; font-size: 20px; font-weight: 700; cursor: pointer; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
+  .back-btn[hidden] { display: none; }
+  .bare .back-btn { border-color: var(--card); color: var(--card); }
+  .sum { font-size: 13px; font-weight: 500; line-height: 1.4; margin-top: 8px; padding-top: 10px; border-top: 1.5px solid var(--ink); }
+  .sum b { font-size: 17px; }
+
+  /* 完成：撲克牌票券 */
+  .done { display: none; text-align: center; }
+  .is-done .form-wrap { display: none; }
+  .is-done .done { display: block; }
+  .is-done .head .bars { visibility: hidden; }
+  /* ───────── 入場券：主票＋票根兩段 (參考 FFFEST 票：四角凹、撕線兩端半圓缺口)；拱門窗改成平面瑞士風 ───────── */
+  .is-done .sheet { height: 90%; }
+  .tk { --w: min(300px, 80cqw, calc((100cqh - 150px) / 1.9)); width: var(--w); aspect-ratio: 1 / 1.9; margin: 4px auto 12px; position: relative;
+    container-type: inline-size; perspective: 1400px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    animation: tkin .9s .2s cubic-bezier(.2, .8, .2, 1.08) both; }
+  @keyframes tkin { from { opacity: 0; transform: translateY(70%) rotate(-8deg) scale(.85); } }
+  /* 落影：獨立一層模糊 (不用 filter：跟遮罩＋3D 翻面一起用，Chrome 會畫壞) */
+  .tk::before { content: ''; position: absolute; inset: 3% 4% -1%; background: rgba(0, 0, 0, .6); filter: blur(16px); transform: translateY(14px) rotate(-1.2deg); border-radius: 12px; }
+  .tk-in { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .8s cubic-bezier(.4, 0, .2, 1); transform: rotate(-1.2deg); }
+  .tk.flip .tk-in { transform: rotate(1.2deg) rotateY(180deg); }
+  .tk-face { --py: 77%; --r: 4cqw; --n: 4.4cqw;
+    position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: #f4eee0; color: var(--ink); text-align: left;
+    display: grid; grid-template-rows: var(--py) 1fr;
+    /* 四角四分之一圓凹角＋撕線兩端半圓缺口 (每一層各挖一個洞，取交集) */
+    --c0: #0000 var(--r), #000 calc(var(--r) + .5px); --c1: #0000 var(--n), #000 calc(var(--n) + .5px);
+    -webkit-mask: radial-gradient(circle at 0 0, var(--c0)), radial-gradient(circle at 100% 0, var(--c0)), radial-gradient(circle at 0 100%, var(--c0)), radial-gradient(circle at 100% 100%, var(--c0)),
+                  radial-gradient(circle at 0 var(--py), var(--c1)), radial-gradient(circle at 100% var(--py), var(--c1));
+    -webkit-mask-composite: source-in;
+            mask: radial-gradient(circle at 0 0, var(--c0)), radial-gradient(circle at 100% 0, var(--c0)), radial-gradient(circle at 0 100%, var(--c0)), radial-gradient(circle at 100% 100%, var(--c0)),
+                  radial-gradient(circle at 0 var(--py), var(--c1)), radial-gradient(circle at 100% var(--py), var(--c1));
+            mask-composite: intersect; }
+  .tk-face::after { content: ''; position: absolute; left: calc(var(--n) + 1.5cqw); right: calc(var(--n) + 1.5cqw); top: var(--py); border-top: 1.5px dashed rgba(17, 17, 17, .5); }
+  .tk-face.back { transform: rotateY(180deg); }
+  .tk-main { display: flex; flex-direction: column; min-height: 0; padding: 6.5cqw 7cqw 5cqw; }
+  .tk-stub { display: grid; grid-template-columns: 1fr auto; gap: 4cqw; align-items: center; padding: 3cqw 7cqw 4cqw; }
+  .tk .k { display: block; font-family: Inter; font-weight: 700; letter-spacing: .16em; font-size: 2.3cqw; opacity: .6; margin-bottom: .8cqw; }
+  .tk-hd { display: flex; justify-content: space-between; align-items: center; font-family: Inter; font-size: 2.7cqw; font-weight: 700; letter-spacing: .2em;
+    padding-bottom: 2.4cqw; border-bottom: 1.5px solid var(--ink); }
+  .tk-hd .r, .tk .r { color: var(--heart); }
+  .tk-title { margin: 3.4cqw 0 4cqw; font-weight: 700; font-size: 10.6cqw; letter-spacing: .02em; line-height: 1.04; }
+  .tk-title span { display: block; } .tk-title span + span { text-align: right; }
+  .tk-arch { position: relative; flex: 1 1 auto; min-height: 0; }
+  .tk-arch svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+  .tk-info { display: grid; grid-template-columns: 1fr 1.1fr 1.5fr; margin-top: 4cqw; border-top: 1.5px solid var(--ink); padding-top: 2.4cqw; }
+  .tk-info > div + div { padding-left: 2.6cqw; border-left: 1px solid rgba(17, 17, 17, .3); margin-left: 2.6cqw; }
+  .tk-info b { display: block; font-family: Inter; font-size: 3.9cqw; font-weight: 700; letter-spacing: .01em; white-space: nowrap; }
+  .tk-info b.tc { font-family: 'Noto Sans TC'; font-size: 3.5cqw; letter-spacing: .04em; }
+  .tk-who .nm { font-size: 7.6cqw; font-weight: 900; letter-spacing: .1em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tk-who .dp { font-size: 3.2cqw; font-weight: 700; letter-spacing: .06em; margin-top: 1cqw; white-space: nowrap; }
+  .tk-who .id { font-family: Inter; font-size: 2.8cqw; letter-spacing: .14em; opacity: .6; margin-top: .6cqw; }
+  .tk-no { text-align: right; border-left: 1px solid rgba(17, 17, 17, .3); padding-left: 4cqw; }
+  .tk-no b { display: block; font-family: Inter; font-size: 11cqw; line-height: .9; letter-spacing: -.02em; font-weight: 500; color: var(--heart); }
+  .tk-no .card { font-family: Inter; font-size: 3.2cqw; font-weight: 700; letter-spacing: .08em; margin-top: 1.6cqw; white-space: nowrap; }
+  /* 背面：上段印章＋繳費、下段票根 */
+  .back .tk-main { align-items: center; text-align: center; justify-content: space-between; }
+  .back .tk-hd { width: 100%; justify-content: center; gap: 3cqw; }
+  .tk-stamp { width: 64cqw; color: var(--heart); margin: -2cqw 0; }
+  .tk-stamp .seal { mix-blend-mode: multiply; }
+  /* 背面：金色細框＋四角捲草 (典雅歐風)，墨綠月桂圍住印章 */
+  .back .tk-main { position: relative; }
+  .back .tk-main::before { content: ''; position: absolute; inset: 4.2cqw 4.2cqw 2.4cqw; border: 1px solid #b08a3e; opacity: .75; pointer-events: none; }
+  .orn { position: absolute; width: 18cqw; height: 18cqw; color: #a37a2c; pointer-events: none; }
+  .orn.tl { left: 2.4cqw; top: 2.4cqw; } .orn.tr { right: 2.4cqw; top: 2.4cqw; transform: scaleX(-1); }
+  .orn.bl { left: 2.4cqw; bottom: .6cqw; transform: scaleY(-1); } .orn.br { right: 2.4cqw; bottom: .6cqw; transform: scale(-1); }
+  .back .tk-hd { border-bottom-color: #b08a3e; margin: 0 9cqw; width: auto !important; align-self: stretch; }
+  .back .tk-stub .tk-thx { color: #1f3d2b; }
+  .tk-pay { color: var(--heart); font-weight: 700; font-size: 4.6cqw; letter-spacing: .1em; line-height: 1.7; }
+  .tk-pay b { font-family: Inter; font-size: 7.4cqw; letter-spacing: .02em; }
+  .tk-pay small { display: block; font-size: 3.2cqw; color: var(--ink); opacity: .7; letter-spacing: .08em; }
+  .back .tk-stub { grid-template-columns: 1fr; text-align: center; }
+  .tk-thx { font-family: Inter; color: var(--heart); font-size: 3.2cqw; font-weight: 700; letter-spacing: .3em; line-height: 1.9; }
+  .tk-sign { font-size: 3cqw; font-weight: 500; letter-spacing: .1em; opacity: .7; margin-top: 1.4cqw; }
+  .done .flip-hint { font-size: 12px; font-weight: 700; letter-spacing: .14em; opacity: .55; margin: 0 0 4px; }
+  .done .note { font-size: 14px; line-height: 1.6; font-weight: 500; margin: 0; }
+  .done .note b { color: #f2b866; }
+  .done .again { display: block; margin: 12px auto 4px; background: none; border: 0; color: var(--card); text-decoration: underline; cursor: pointer; font: inherit; font-size: 14px; opacity: .7; }
+  /* ───────── 傳令兔對話框：米白紙＋墨線，跟撲克牌同一種紙；尾巴指到棋盤上的兔子 ───────── */
+  :root { --talk-w: 92%; --talk-x: 4px; }
+  .head:has(.talk) { text-align: left; }
+  @media (max-height: 760px) { :root { --sheet: 61%; }
+    .card3 { padding: 14px 22px 10px 28px; } .field input { padding: 8px 10px 6px; font-size: 18px; } .field .err { min-height: 8px; } .sum { margin-top: 2px; padding-top: 6px; } }   /* 矮手機：牌桌拉高，對話框往上提補回來 */
+  .head .eyebrow, .head .bars { display: none; }
+  .is-done .head .eyebrow { display: none; }
+  .talk-top.is-done #c { transform: translateY(var(--shift)); }   /* 背景場景不再往上推：兔子藏在票後面 */
+  .is-done .talk { display: none; }
+  body:not(.landed) .talk { visibility: hidden; }   /* 倒帶回封面時尾巴不要留在畫面下緣 */
+  .talk-top { --shift: -14%; --sheet: 47%; }   /* 預設：對話框浮在上面 (?talk=bottom 關掉) */
+  .talk-top .talk { position: absolute; left: 14px; margin: 0; z-index: 4; max-width: 78%; }
+  .talk { position: relative; width: fit-content; max-width: var(--talk-w); min-width: 52%; margin: 6px 0 2px var(--talk-x);
+    padding: 12px 18px 13px; color: var(--ink); opacity: 0; transform-origin: var(--ox, 30%) var(--oy, -40px); }
+  .talk.go { animation: talkpop .5s cubic-bezier(.2, .9, .3, 1.25) both; animation-delay: var(--base, 0s); }
+  @keyframes talkpop { from { opacity: 0; transform: scale(.4) rotate(-6deg); } to { opacity: 1; transform: none; } }
+  .talk-bg { position: absolute; left: 0; top: 0; overflow: visible; z-index: -1; pointer-events: none;
+    filter: drop-shadow(0 10px 12px rgba(0, 0, 0, .5)) drop-shadow(0 22px 26px rgba(0, 0, 0, .22)); }
+  .talk-bg .face { fill: #fbf8f0; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+  .talk-bg .inner { fill: none; stroke: rgba(17, 17, 17, .28); stroke-width: 1; }
+  .talk-no { font-family: Inter; font-size: 11px; font-weight: 700; letter-spacing: .14em; display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .talk-no .r { color: var(--heart); }
+  .talk-q { margin: 0; white-space: nowrap; font-size: min(24px, 6.6cqw); font-weight: 700; letter-spacing: .03em; line-height: 1.25; }
+  .talk-s { margin: 3px 0 0; font-size: 13px; font-weight: 500; opacity: .62; }
+  .talk-s:empty { display: none; }
+  /* 一個字一個字唸出來 */
+  .talk .ch { opacity: 0; }
+  .talk.go .ch { animation: ink .01s both; animation-delay: calc(var(--base, 0s) + .25s + var(--k) * 45ms); }
+  @keyframes ink { to { opacity: 1; } }
+  .step > h3, .step > .hint { display: none; }   /* 題目改由兔子說 */
+  .step[data-step="1"] .depts { margin-top: 10px; }
+  @media (prefers-reduced-motion: reduce) { .talk.go, .talk .ch { animation-duration: .01s; animation-delay: 0s; } }
+
+  /* 底部提示：往下拉回上一題 */
+  .pull { padding: 6px 18px calc(12px + env(safe-area-inset-bottom)); display: flex; justify-content: center; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--card); opacity: .55; pointer-events: none; }
+  .pull svg { width: 16px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; animation: pulldn 1.8s ease-in-out infinite; }
+  @keyframes pulldn { 0%, 100% { transform: translateY(-2px); opacity: .4; } 50% { transform: translateY(2px); opacity: 1; } }
+  /* 學號牌右下角：送出鍵 (酒紅小牌籤)，旁邊是摘要 */
+  .card-foot { display: flex; align-items: center; gap: 12px; margin-top: 6px; padding-top: 10px; border-top: 1.5px solid var(--ink); }
+  .card-foot .sum { flex: 1; margin: 0; padding: 0; border: 0; white-space: nowrap; }
+  .send { appearance: none; border: 0; cursor: pointer; flex: none; background: var(--heart); color: var(--card); border-radius: 999px;
+    padding: 10px 16px 10px 18px; font: inherit; font-size: 16px; font-weight: 700; letter-spacing: .08em; display: inline-flex; align-items: center; gap: 7px;
+    box-shadow: 0 1px 0 #7d151b, 0 2px 0 #560c10, 0 6px 10px rgba(0, 0, 0, .25); transform: rotate(-2deg); margin: 0 -8px -4px 0;
+    transition: transform .15s, opacity .2s; -webkit-tap-highlight-color: transparent; }
+  .send svg { width: 14px; height: 13px; fill: currentColor; }
+  .send:active { transform: rotate(-2deg) scale(.95); }
+  .send[disabled] { opacity: .28; cursor: not-allowed; }
+  .send:not([disabled]) { animation: ready .5s cubic-bezier(.2, .9, .3, 1.4); }
+  @keyframes ready { 40% { transform: rotate(-6deg) scale(1.12); } }
+
+  .demo { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 6; font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    background: var(--ink); color: var(--card); padding: 5px 9px; border-radius: 6px; opacity: .7; display: none; }
+  .landed .demo { display: block; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="orn" viewBox="0 0 60 60"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 58 V14 Q4 4 14 4 H58" stroke-width="1.4"/>
+  <path d="M9 58 V18 Q9 9 18 9 H58" stroke-width=".7"/>
+  <path d="M15 40 C15 24 24 15 40 15" stroke-width="1"/>
+  <path d="M15 40 C12 34 18 30 21 34 C23 37 19 40 17 37" stroke-width="1"/>
+  <path d="M40 15 C34 12 30 18 34 21 C37 23 40 19 37 17" stroke-width="1"/>
+  <path d="M22 22 C26 18 30 20 28 24 C26 27 22 25 24 23" stroke-width="1"/>
+  <path d="M15 52 C18 48 21 48 22 51 M52 15 C48 18 48 21 51 22" stroke-width=".9"/>
+  </g><path d="M14 14 l3 -3 3 3 -3 3z" fill="currentColor"/></symbol><symbol id="h" viewBox="0 0 32 30"><path d="M16 29C7 21 0 15.5 0 8.6 0 3.8 3.7 0 8.4 0c3.2 0 5.9 1.8 7.6 4.6C17.7 1.8 20.4 0 23.6 0 28.3 0 32 3.8 32 8.6 32 15.5 25 21 16 29z"/></symbol></svg>
+
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div class="over">
+    <div class="frame"></div>
+    <div class="date"><span class="one">1</span>2<svg class="heart"><use href="#h"/></svg>22<small>TUE / 星期二</small></div>
+    <div class="bottom">
+      <h1><span>愛理不理</span><span>聖誕有你</span></h1>
+      <div class="info">報名・繳費截止 <b>12.15</b><br>17:30 – 21:30　高科大建工 中正堂</div>
+      <button id="go3d" type="button"><svg viewBox="0 0 22 14"><path d="M2 12 11 3l9 9"/></svg>往上滑，掉進鑰匙孔</button>
+    </div>
+  </div>
+
+  <div class="demo">DEMO・資料不會送出</div>
+
+  <!-- 定格後從下方抽出的牌：一次一題 -->
+  <form class="sheet bare first" id="form" novalidate>
+    <div class="ix l">12<svg class="heart"><use href="#h"/></svg>22</div>
+    <div class="ix r">♠</div>
+    <div class="head">
+      <div class="eyebrow" id="eyebrow">報名 ENTRY</div>
+      <div class="bars"><i class="on"></i><i></i><i></i></div>
+      <!-- 傳令兔的對話框：尾巴由 JS 算，指到棋盤上的兔子 -->
+      <div class="talk" id="talk" aria-live="polite">
+        <svg class="talk-bg" id="talkBg" aria-hidden="true"></svg>
+        <div class="talk-no" id="talkNo"></div>
+        <p class="talk-q" id="talkQ"></p>
+        <p class="talk-s" id="talkS"></p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="form-wrap">
+        <section class="step on" data-step="1">
+          <h3><em>01</em>選你的系所</h3>
+          <p class="hint">抽一張牌</p>
+          <div class="depts" id="depts"></div>
+        </section>
+
+        <section class="step" data-step="2">
+          <h3><em>02</em>系學會會員？</h3>
+          <p class="hint">決定報名費</p>
+          <div class="member">
+            <label class="opt pc" style="--rot:-4deg;--i:0"><input type="radio" name="member" value="系會員" data-fee="150"><span class="s tl r">♥</span><span class="lb">是，系會員</span><b>150<small>元</small></b><span class="s br r">♥</span></label>
+            <label class="opt pc" style="--rot:4deg;--i:1"><input type="radio" name="member" value="非系會員" data-fee="250"><span class="s tl">♠</span><span class="lb">不是</span><b>250<small>元</small></b><span class="s br">♠</span></label>
+          </div>
+        </section>
+
+        <section class="step" data-step="3">
+          <h3><em>03</em>你是誰</h3>
+          <p class="hint">繳費時對名單用</p>
+          <div class="card3 pc" style="--rot:-1.5deg">
+          <span class="s tl">♣</span>
+          <div class="field">
+            <label for="sid">學號</label>
+            <input id="sid" name="sid" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="C112123456" maxlength="12" enterkeyhint="next">
+            <div class="err" id="sidErr"></div>
+          </div>
+          <div class="field">
+            <label for="name">姓名</label>
+            <input id="name" name="name" autocomplete="name" placeholder="王小明" maxlength="20" enterkeyhint="send">
+            <div class="err" id="nameErr"></div>
+          </div>
+          <div class="msg" id="msg" role="alert"></div>
+          <div class="card-foot">
+            <div class="sum" id="sum"></div>
+            <button class="send" id="send" type="submit" disabled>送出 <svg><use href="#h"/></svg></button>
+          </div>
+          </div>
+        </section>
+        <!-- 防機器人：真人看不到這格，填了就當垃圾 -->
+        <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">
+      </div>
+
+      <div class="done">
+        <div class="tk" id="tk" role="button" tabindex="0" aria-label="入場券，點一下翻面">
+          <div class="tk-in">
+            <div class="tk-face front">
+              <div class="tk-main">
+                <div class="tk-hd"><span>ADMIT ONE</span><span>12 <span class="r">♥</span> 22</span></div>
+                <div class="tk-title"><span>愛理不理</span><span>聖誕有你</span></div>
+                <div class="tk-arch"><svg id="tkArch" viewBox="0 0 200 190" aria-hidden="true"></svg></div>
+                <div class="tk-info">
+                  <div><span class="k">DATE</span><b>12.22 TUE</b></div>
+                  <div><span class="k">TIME</span><b>17:30–21:30</b></div>
+                  <div><span class="k">PLACE</span><b class="tc">高科大建工 中正堂</b></div>
+                </div>
+              </div>
+              <div class="tk-stub">
+                <div class="tk-who"><span class="k">NAME</span><div class="nm" id="tName">王小明</div><div class="dp" id="tDept">資工系・系會員</div><div class="id" id="tId">C112***456</div></div>
+                <div class="tk-no"><span class="k">ENTRY No.</span><b id="tNo">037</b><div class="card"><span id="tCard">J♠</span>　<span id="tFee">150</span> 元</div></div>
+              </div>
+            </div>
+            <div class="tk-face back">
+              <div class="tk-main">
+                <svg class="orn tl" aria-hidden="true"><use href="#orn"/></svg><svg class="orn tr" aria-hidden="true"><use href="#orn"/></svg>
+                <svg class="orn bl" aria-hidden="true"><use href="#orn"/></svg><svg class="orn br" aria-hidden="true"><use href="#orn"/></svg>
+                <div class="tk-hd"><span>愛理不理</span><span class="r">♥</span><span>聖誕有你</span></div>
+                <svg class="tk-stamp" id="tkSeal" viewBox="0 0 260 260" aria-hidden="true">
+                  <defs><path id="ring" d="M130 130 m-74 0 a74 74 0 1 1 148 0 a74 74 0 1 1 -148 0"/></defs>
+                  <g id="wreath"></g>
+                  <g class="seal" transform="rotate(-9 130 130)">
+                    <circle cx="130" cy="130" r="94" fill="none" stroke="currentColor" stroke-width="3"/>
+                    <circle cx="130" cy="130" r="56" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                    <text font-family="Inter" font-weight="700" font-size="14" fill="currentColor"><textPath href="#ring" textLength="458" lengthAdjust="spacing">ALICE ♥ CHRISTMAS ♣ WONDERLAND ♦ 2026 ♠ </textPath></text>
+                    <use href="#h" x="106" y="100" width="48" height="45" fill="currentColor"/>
+                    <text x="130" y="168" text-anchor="middle" font-family="Inter" font-weight="700" font-size="15" letter-spacing="1" fill="currentColor">12·22</text>
+                  </g>
+                </svg>
+                <div class="tk-pay">請於 <b>12.15</b>（二）前<br>向系學會繳 <b id="tFee2">150</b> 元<small>名單上打勾，才算報名完成</small></div>
+              </div>
+              <div class="tk-stub">
+                <div><div class="tk-thx">SEE YOU DOWN<br>THE RABBIT HOLE</div><div class="tk-sign">截圖存好這張票，入場時出示</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="flip-hint">↻ 點票翻面・看繳費方式</p>
+        <button class="again" id="again" type="button">幫另一位朋友報名</button>
+      </div>
+    </div>
+
+    <!-- 沒有按鈕：選完自動下一題；往下拉 = 回上一題 (第一題再拉 = 倒帶回封面) -->
+    <div class="pull form-wrap" id="pull" aria-hidden="true"><svg viewBox="0 0 22 14"><path d="M2 3l9 9 9-9"/></svg><span id="pullTx">下拉回到封面</span></div>
+  </form>
+</div>
+
+<svg class="grain"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+
+<script>
+  // ───────── 報名表單（送出邏輯跟 register.html 一樣，後端不用改）─────────
+  // 正式網址：Google Apps Script 部署的 …/exec；空字串 = 原型模式，只顯示畫面不送資料；測試可用 ?api=網址 臨時指定
+  const Q = new URLSearchParams(location.search);
+  const SUBMIT_URL = Q.get('api') ?? 'https://script.google.com/macros/s/AKfycbyjaxHCTrjMPn6Y62yRuPg3bq7Gox0zjIlHZrppvt1BVDnB9n5xwEl5H8WQasu7YLUh/exec';
+  if (SUBMIT_URL) document.querySelector('.demo').remove();
+
+  const DEPTS = ['國企系', '車輛系', '財稅系', '土木系', '觀光系', '機械系', '能源系', '金資系', '資工系', '電子系'];
+  const SUITS = [['♠', ''], ['♥', 'r'], ['♣', ''], ['♦', 'r']];
+  const $ = (s) => document.querySelector(s);
+  const form = $('#form'), body = document.body;
+
+  // 兩排各 5 張：j = -2…2 (左右)，row = 0/1；jr/dx/dy = 每張固定的一點點亂，看起來像隨手散開
+  const JIT = [[-2, 0, 3], [1.5, 2, -2], [-1, -2, 4], [2.5, 1, -1], [-1.5, -1, 2], [2, 6, 1], [-2.5, 4, -2], [1, 7, 3], [-1.5, 5, -1], [2, 6, 2]];
+  $('#depts').innerHTML = DEPTS.map((d, i) => {
+    const [s, c] = SUITS[i % 4], row = Math.floor(i / 5), j = (i % 5) - 2, [jr, dx, dy] = JIT[i];
+    return `<label class="dept" style="--i:${i};--row:${row};--j:${j};--jr:${jr}deg;--dx:${dx}px;--dy:${dy}px"><input type="radio" name="dept" value="${d}"><span class="s tl ${c}">${s}</span><span class="nm">${d}</span><span class="s br ${c}">${s}</span></label>`;
+  }).join('');
+
+  const val = () => {
+    const member = form.querySelector('[name=member]:checked');
+    return { dept: form.dept.value, member: member?.value || '', fee: member?.dataset.fee || '',
+      sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
+  };
+  const SID_OK = /^[A-Z0-9]{8,12}$/;
+
+  // 一次一題：1 系所 → 2 會員 → 3 學號姓名
+  let step = 1;
+  const SUIT_OF = ['♠', '♥', '♣'];
+  function show(n, dir = 1) {
+    step = n;
+    document.querySelectorAll('.step').forEach((el) => {
+      const on = +el.dataset.step === n;
+      el.classList.toggle('on', on); el.classList.toggle('back', on && dir < 0);
+    });
+    document.querySelectorAll('.bars i').forEach((b, i) => b.classList.toggle('on', i < n));
+    $('.ix.r').textContent = SUIT_OF[n - 1];
+    $('.ix.r').style.color = n === 2 ? 'var(--heart)' : '';
+    $('#pullTx').textContent = n === 1 ? '下拉回到封面' : '下拉回上一題';
+    form.classList.add('bare');   // 全程沒有外框：題目都是浮在棋盤上的牌
+    if (n !== 1 || dir < 0) form.classList.remove('first');
+    $('#send').innerHTML = '送出 <svg><use href="#h"/></svg>';
+    $('.body').scrollTop = 0;
+    say(n);
+    refresh();
+  }
+
+  // ───────── 傳令兔對話框 ─────────
+  // 每題兔子說的話：[大字, 小字]
+  const SAY = {
+    1: ['你是哪一系的？', '抽一張牌給我。'],
+    2: ['系學會會員嗎？', '這決定你的報名費。'],
+    3: ['報上學號和姓名！', '繳費時要對名單。'],
+  };
+  const talk = $('#talk');
+  const chars = (s, k0) => [...s].map((c, i) => `<span class="ch" style="--k:${k0 + i}">${c}</span>`).join('');
+  let talked = false;
+  function say(n, lines = SAY[n]) {
+    const [q, s] = lines;
+    $('#talkNo').innerHTML = `<span class="${n === 2 ? 'r' : ''}">${SUIT_OF[n - 1]}</span>0${n} / 03`;
+    $('#talkQ').innerHTML = chars(q, 0);
+    $('#talkS').innerHTML = s ? chars(s, q.length + 3) : '';
+    talk.setAttribute('aria-label', q + (s || ''));
+    // 第一次：定格後 0.55 秒兔子先開口，牌 0.75 秒才開始彈出來；之後換題立刻冒
+    talk.style.setProperty('--base', talked ? '0s' : '.55s');
+    talk.classList.remove('go'); void talk.offsetWidth;
+    if (body.classList.contains('landed')) talk.classList.add('go');
+    talked = true;
+    requestAnimationFrame(drawTalk);
+  }
+
+  const TALK = { tail: 44, liftMax: 90, half: 15 };   // 尾巴長度、最多往上提多少、尾巴根部半寬 (px)
+  // 預設：對話框浮在畫面上方 (愛麗絲往上吊高、畫布少往上推)；?talk=bottom = 舊版，放在牌桌上方
+  const TOP = Q.get('talk') !== 'bottom';
+  if (TOP) { body.classList.add('talk-top'); $('#stage').appendChild(talk); }
+  // 尾巴：從對話框上緣伸出去，指向兔子嘴巴，停在兔子腳下一點 (不蓋到兔子)
+  function drawTalk() {
+    // 鏡頭要定格後才準；全部用「動畫結束後」的版面算 (offset 不吃 transform)，滑進來的途中也不會跑掉
+    if (!window.__herald || !body.classList.contains('landed') || body.classList.contains('is-done')) return;
+    const a = window.__herald(), sr = $('#stage').getBoundingClientRect();
+    const shift = parseFloat(getComputedStyle(body).getPropertyValue('--shift')) / 100 || 0;
+    const cr = { left: sr.left, top: sr.top + shift * sr.height, width: sr.width, height: sr.height };   // 畫布往上推之後的位置
+    const w = talk.offsetWidth, h = talk.offsetHeight;
+    const R = 16, half = TALK.half;
+    let bx, tx, ty;
+    if (TOP) {
+      // 浮在上面：對話框底邊離兔子耳朵 TAIL px，尾巴往下指到兔子頭；用上下翻轉的座標算 (尾巴一樣當成在「上緣」)
+      const ear = cr.top + a.ear.y * cr.height - sr.top;
+      const topPx = Math.max(12, ear - 8 - TALK.tail - h);
+      talk.style.top = topPx + 'px';
+      const ox = sr.left + talk.offsetLeft, oy = sr.top + topPx;
+      const mx = cr.left + a.mouth.x * cr.width - ox, my = h - (cr.top + a.mouth.y * cr.height - oy);
+      bx = Math.min(w - R - half - 6, Math.max(R + half + 6, mx + 26));
+      ty = -(ear - 8 - topPx - h);
+      const k = my < 0 ? ty / my : 0; tx = bx + (mx - bx) * k;
+    } else {
+    const lift0 = parseFloat(talk.style.top) || 0;
+    const ox = sr.left + form.offsetLeft + talk.offsetLeft, oy0 = sr.top + form.offsetTop + talk.offsetTop - lift0;   // 對話框左上角 (不含動畫、不含往上提)
+    // 往上提，讓尾巴長度剛好 TAIL px (不超過 LIFT_MAX)
+    const lift = -Math.min(TALK.liftMax, Math.max(0, oy0 - (cr.top + a.feet.y * cr.height + 14) - TALK.tail));
+    talk.style.top = lift + 'px';
+    // 版面太擠 (下面的牌超出) → 牌也跟著往上補，補多少看超出多少
+    const bodyEl = $('.body'); talk.style.marginBottom = '';
+    const over = bodyEl.scrollHeight - bodyEl.clientHeight;
+    if (over > 0) talk.style.marginBottom = (2 - Math.min(-lift, over)) + 'px';
+    const oy = oy0 + lift;
+    const mx = cr.left + a.mouth.x * cr.width - ox, my = cr.top + a.mouth.y * cr.height - oy;
+    const fy = cr.top + a.feet.y * cr.height - oy;
+    bx = Math.min(w - R - half - 6, Math.max(R + half + 6, mx + 26));
+    ty = Math.min(-16, fy + 14);                  // 尾巴尖停在腳下 14px
+    if (my > -20) ty = -16;                       // 兔子不在上面 (畫面太矮) → 只留短尾巴
+    const k = my < 0 ? ty / my : 0; tx = bx + (mx - bx) * k;
+    }
+    // 外框：圓角方塊＋上緣一條略彎的尾巴 (像剪刀剪出來)
+    const path = (o = 0) => {
+      const r = R - o, L = o, T = o, Rr = w - o, B = h - o;
+      return `M${L + r},${T} L${bx - half + o},${T} Q${bx - half * .3},${T + ty * .45} ${tx},${ty + o * 2.2} Q${bx + half * .2},${T + ty * .4} ${bx + half - o},${T}`
+        + ` L${Rr - r},${T} Q${Rr},${T} ${Rr},${T + r} L${Rr},${B - r} Q${Rr},${B} ${Rr - r},${B} L${L + r},${B} Q${L},${B} ${L},${B - r} L${L},${T + r} Q${L},${T} ${L + r},${T}Z`;
+    };
+    const svg = $('#talkBg');
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    const flip = TOP ? ` matrix(1 0 0 -1 0 ${h})` : '';
+    svg.innerHTML = ['#c2b290', '#d4c6a8', '#e4d9c2'].map((c, i) => `<path d="${path()}" fill="${c}" transform="translate(0 ${3 - i})${flip}"/>`).join('')
+      + `<path class="face" d="${path()}" transform="${flip}"/><path class="inner" d="${path(5)}" transform="${flip}"/>`;
+    talk.style.setProperty('--ox', tx + 'px'); talk.style.setProperty('--oy', (TOP ? h - ty : ty) + 'px');
+  }
+  addEventListener('entry:herald', () => requestAnimationFrame(drawTalk));
+  addEventListener('entry:landed', () => { drawTalk(); talk.style.setProperty('--base', '.55s'); talk.classList.remove('go'); void talk.offsetWidth; talk.classList.add('go'); });
+  addEventListener('resize', () => requestAnimationFrame(drawTalk));
+  function refresh() {
+    const v = val();
+    const ok = step === 1 ? !!v.dept : step === 2 ? !!v.member : !!(v.sid && v.name);
+    $('#send').disabled = !(v.sid && v.name);
+    $('#sum').innerHTML = `${v.dept}${v.member ? '・' + v.member : ''}${v.fee ? `<br>報名費 <b>${v.fee}</b> 元` : ''}`;
+  }
+  form.addEventListener('input', refresh);
+  form.addEventListener('change', refresh);
+  $('#sid').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/\s/g, ''); $('#sidErr').textContent = ''; });
+  $('#sid').addEventListener('blur', (e) => { $('#sidErr').textContent = e.target.value && !SID_OK.test(e.target.value) ? '學號格式不對，請再檢查' : ''; });
+  $('#sid').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#name').focus(); } });
+  $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!$('#send').disabled) form.requestSubmit(); } });
+  $('#name').addEventListener('input', () => { $('#nameErr').textContent = ''; });
+  // 選完牌自動下一題 (等選中的牌浮起來 0.55 秒)；已經選過的牌再點一次也會前進
+  let auto = 0;
+  form.addEventListener('click', (e) => {
+    const r = e.target;
+    if (!r.matches?.('input[type=radio]') || step > 2) return;
+    const at = step; clearTimeout(auto);
+    auto = setTimeout(() => { if (step === at) show(step + 1); }, 550);
+  });
+
+  // 往下拉 (手指往下滑／滾輪往上) = 回上一題；第一題再拉 = 倒帶回鑰匙孔封面
+  function goBack() {
+    if (!body.classList.contains('landed') || body.classList.contains('is-done')) return;
+    clearTimeout(auto);
+    if (step > 1) show(step - 1, -1);
+    else dispatchEvent(new Event('entry:rewind'));
+  }
+  let armed = true, quiet = 0;   // 觸控板一次滑動會送很多個 wheel：停 250ms 才算下一次
+  addEventListener('wheel', (e) => {
+    clearTimeout(quiet); quiet = setTimeout(() => { armed = true; }, 250);
+    if (armed && e.deltaY < -12) { armed = false; goBack(); }
+  }, { passive: true });
+  let sy = null, sx = 0;
+  addEventListener('touchstart', (e) => { sy = e.touches[0].clientY; sx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchmove', (e) => {
+    if (sy === null) return;
+    const dy = e.touches[0].clientY - sy, dx = Math.abs(e.touches[0].clientX - sx);
+    if (dy > 70 && dy > dx * 1.5) { sy = null; goBack(); }
+  }, { passive: true });
+  addEventListener('keydown', (e) => { if (e.key === 'ArrowUp' && !e.target.matches?.('input')) goBack(); });
+
+  // 入場券拱門：平面瑞士風。紅色拱門、黑白棋盤一條、傳令兔剪紙，一條白色手繪螺旋線繞著兔子 (前後穿插)，幾顆簡約雪花
+  function drawArch() {
+    const box = $('#tkArch').getBoundingClientRect();
+    const W = 200, H = Math.max(170, Math.round(200 * box.height / Math.max(1, box.width)));
+    $('#tkArch').setAttribute('viewBox', `0 0 ${W} ${H}`);
+    // 拱門改窄改高 (左右留米白紙給冬青葉)：門的比例，不是半圓
+    const AX = 28, AW = W - AX * 2, R = AW / 2, top = R + 6;
+    const arch = `M${AX} ${H} V${top} A${R} ${R} 0 0 1 ${AX + AW} ${top} V${H} Z`;
+    const sq = AW / 14, by = H - sq;                          // 黑白格：只剩最底下一排小格
+    let board = '';
+    for (let c = 0; c < 14; c++) if (c % 2) board += `<rect x="${AX + c * sq}" y="${by}" width="${sq}" height="${sq}"/>`;
+    const rh = Math.min(by - 62, 128), rw = rh * 0.62, rx0 = 80;    // 兔子 (置中：中心 x = rx0 + 20 = 100)
+    // 螺旋：從拱頂往下繞，越下面越寬，最後落在兔子腳邊；有一點手抖。下半圈 (朝向我們) 畫在兔子前面
+    let sd = 11; const rnd = () => ((sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296 - 0.5);
+    const rTop = by + 3 - rh, turns = 3.3, N = 360, y0 = Math.max(40, rTop + 4), y1 = by - 10;
+    const pts = [];
+    let wob = 0;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, a = Math.PI * 2 * turns * t - Math.PI * 0.4;
+      wob += rnd() * 0.5; wob *= 0.9;
+      const rx = 16 + 38 * Math.pow(t, 0.7) + wob * 3, ry = 10 + 9 * t;
+      const cx = 94 + 10 * t + 5 * Math.sin(t * 6);    // 螺旋跟著兔子置中
+      pts.push([cx + rx * Math.cos(a), y0 + (y1 - y0) * t + ry * Math.sin(a) + wob, Math.sin(a) > 0]);
+    }
+    // 開頭：從左上甩進來的一筆
+    const lead = [[AX + 4, y0 - 10], [AX + 20, y0 - 22], [70, y0 - 18], [pts[0][0], pts[0][1]]];
+    const line = (list) => list.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+    const back = `M${lead[0][0]} ${lead[0][1]} C${lead[1][0]} ${lead[1][1]} ${lead[2][0]} ${lead[2][1]} ${lead[3][0]} ${lead[3][1]}` + line(pts).replace(/^M/, 'L');
+    let front = '', seg = [];
+    pts.forEach((p) => { if (p[2]) seg.push(p); else { if (seg.length > 1) front += line(seg); seg = []; } });
+    if (seg.length > 1) front += line(seg);
+    // 雪花：六根線＋小點，簡約
+    const flake = (x, y, r) => { let d = ''; for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3 + Math.PI / 2; d += `M${(x - r * Math.cos(a)).toFixed(1)} ${(y - r * Math.sin(a)).toFixed(1)}L${(x + r * Math.cos(a)).toFixed(1)} ${(y + r * Math.sin(a)).toFixed(1)}`; } return d; };
+    const ix = (x) => AX + (x / 200) * AW;                   // 原本以整寬排的點綴 → 縮進拱門裡
+    const FL = [[ix(34), top + 4, 5], [ix(168), top - 22, 4], [ix(52), by - 40, 3.2], [ix(176), by - 70, 5.5], [ix(70), top - 40, 3], [ix(24), by - 90, 2.6]];
+    const dots = [[ix(150), top - 44], [ix(42), top + 40], [ix(184), top + 20], [ix(86), by - 22], [ix(30), top - 14]];
+    // 冬青：深綠刺葉＋酒紅果子，平面；一簇 = 三片葉＋三顆果，掛在門框肩膀和門腳
+    const leaf = (L, w) => `M0 0 Q${L * .12} ${-w * .9} ${L * .25} ${-w} Q${L * .32} ${-w * .5} ${L * .45} ${-w * .95} Q${L * .55} ${-w * .5} ${L * .68} ${-w * .85} Q${L * .76} ${-w * .4} ${L * .9} ${-w * .55} L${L} 0`
+      + ` L${L * .9} ${w * .55} Q${L * .76} ${w * .4} ${L * .68} ${w * .85} Q${L * .55} ${w * .5} ${L * .45} ${w * .95} Q${L * .32} ${w * .5} ${L * .25} ${w} Q${L * .12} ${w * .9} 0 0Z`;
+    const holly = (x, y, ang, k = 1, mir = 1) => {
+      const Ls = [[ang - 38, 24], [ang + 8, 27], [ang + 52, 21]];
+      const leaves = Ls.map(([a, L]) => `<g transform="rotate(${a})"><path d="${leaf(L, 6.4)}" fill="#1f3d2b"/><path d="M2 0 L${L - 3} 0" stroke="#4f7a5e" stroke-width=".7" fill="none"/></g>`).join('');
+      const berries = [[-1, -2.6], [3, 1.4], [-2.6, 2.6]].map(([bx, by2]) => `<circle cx="${bx}" cy="${by2}" r="2.6" fill="#9e1b22" stroke="#111" stroke-width=".5"/><circle cx="${bx - .8}" cy="${by2 - .9}" r=".6" fill="#f4eee0"/>`).join('');
+      return `<g transform="translate(${x} ${y}) scale(${k * mir} ${k})">${leaves}${berries}</g>`;
+    };
+    const greens = holly(AX + 2, top + 2, 200, 1, 1) + holly(AX + AW - 2, top + 2, 200, 1, -1)
+      + holly(AX + 1, H - sq - 2, 150, .8, 1) + holly(AX + AW - 1, H - sq - 2, 150, .8, -1)
+      + holly(100, 6, 180, .55, 1) + holly(100, 6, 180, .55, -1);
+    const ST = 'fill="none" stroke="#f4eee0" stroke-linecap="round" stroke-linejoin="round"';
+    // 拱門中心：使用者自己手畫的歪星星 (跟首頁鑰匙孔上那顆同一筆)，暖黃
+    const ss = 40, scx = 100, scy = Math.max(30, rTop * 0.5 + 4);
+    const star = `<g transform="translate(${scx - ss / 2} ${scy - ss / 2}) scale(${ss / 104})"><path d="M17 81 Q58 67 98 49 Q100 41 91 40 Q47 38 1 41 Q30 62 72 88 Q67 44 59 1 Q35 37 8 77" fill="none" stroke="#f6cf7e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 8)"/></g>`;
+    $('#tkArch').innerHTML = `
+      <defs><clipPath id="ac"><path d="${arch}"/></clipPath></defs>
+      <g clip-path="url(#ac)">
+        <rect width="${W}" height="${H}" fill="#9e1b22"/>
+        <rect y="${by}" width="${W}" height="${sq}" fill="#f4eee0"/>
+        <g fill="#111">${board}</g>
+        <path d="${FL.map((f) => flake(...f)).join('')}" ${ST} stroke-width=".9"/>
+        <g fill="#f4eee0">${dots.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1"/>`).join('')}</g>
+        <path d="${back}" ${ST} stroke-width="1.4" opacity=".6"/>
+        <image href="assets/cutouts/herald.svg" x="${rx0 + 20 - rw / 2}" y="${by + 3 - rh}" width="${rw}" height="${rh}" preserveAspectRatio="xMidYMax meet"/>
+        <path d="${front}" ${ST} stroke-width="1.8"/>
+        ${star}
+      </g>
+      <path d="M${AX + 6} ${H} V${top} A${R - 6} ${R - 6} 0 0 1 ${AX + AW - 6} ${top} V${H}" fill="none" stroke="#f4eee0" stroke-width=".8" opacity=".7"/>
+      ${greens}`;
+  }
+  // 背面月桂花圈：兩枝墨綠葉子從底部往上彎，頂端留缺口，底部綁兩顆酒紅果
+  (function drawWreath() {
+    const cx = 130, cy = 130, r = 112, out = [];
+    for (const side of [1]) {          // 只算左邊那枝 (方向是對的)，右邊直接鏡像，兩邊才會完全對稱
+      for (let k = 0; k < 13; k++) {
+        const a = (100 + k * 11.5) * Math.PI / 180;           // 從底部 (90°) 往上到約 250°
+        const ang = Math.PI / 2 + side * (a - Math.PI / 2);
+        const x = cx + r * Math.cos(ang), y = cy + r * Math.sin(ang);
+        const tan = Math.atan2(Math.cos(ang), -Math.sin(ang)) * 180 / Math.PI * side;
+        const L = 21 - k * .6, wdt = 7.4 - k * .2;
+        for (const off of [-1, 1]) {                         // 每節兩片：一片朝外、一片朝內
+          const rot = tan + (side < 0 ? 180 : 0) + off * 38;
+          out.push(`<ellipse cx="${L / 2}" cy="0" rx="${L / 2}" ry="${wdt / 2}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)})" fill="#1f3d2b"/>`);
+        }
+      }
+      // 枝
+      const a0 = 100 * Math.PI / 180, a1 = (100 + 12 * 11.5) * Math.PI / 180;
+      const p = (a) => { const ang = Math.PI / 2 + side * (a - Math.PI / 2); return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)]; };
+      const [x0, y0] = p(a0), [x1, y1] = p(a1);
+      out.unshift(`<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 ${side > 0 ? 1 : 0} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="#1f3d2b" stroke-width="1.2"/>`);
+    }
+    const half = out.join('');
+    out.length = 0;
+    out.push(half, `<g transform="translate(260 0) scale(-1 1)">${half}</g>`);
+    out.push(`<circle cx="124" cy="244" r="4" fill="#9e1b22"/><circle cx="136" cy="244" r="4" fill="#9e1b22"/><circle cx="130" cy="250" r="4" fill="#9e1b22"/>`);
+    document.getElementById('wreath').innerHTML = out.join('');
+  })();
+  const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const tk = $('#tk');
+  tk.addEventListener('click', () => tk.classList.toggle('flip'));
+  tk.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tk.classList.toggle('flip'); } });
+
+  const showDone = (v, no) => {
+    requestAnimationFrame(drawArch);
+    tk.classList.remove('flip');
+    $('#tName').textContent = v.name;
+    $('#tDept').textContent = `${v.dept}・${v.member}`;
+    $('#tId').textContent = v.sid.length > 6 ? v.sid.slice(0, 4) + '***' + v.sid.slice(-3) : v.sid;
+    $('#tFee').textContent = v.fee; $('#tFee2').textContent = v.fee;
+    $('#tNo').textContent = String(no).padStart(3, '0');
+    // 你的牌：花色跟系所那張牌一樣，點數 = 序號輪 A–K
+    const di = Math.max(0, DEPTS.indexOf(v.dept)), [suit, red] = SUITS[di % 4];
+    $('#tCard').innerHTML = `${RANKS[(no - 1) % 13]}<span style="color:${red ? 'var(--heart)' : 'inherit'}">${suit}</span>`;
+    $('#eyebrow').textContent = '報名完成 DONE';
+    document.activeElement?.blur();
+    body.classList.add('is-done');
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (step !== 3) return;
+    const v = val();
+    if (!SID_OK.test(v.sid)) { $('#sidErr').textContent = '學號格式不對，請再檢查'; $('#sid').focus(); return; }
+    if (!v.name) { $('#nameErr').textContent = '請填姓名'; $('#name').focus(); return; }
+    $('#msg').textContent = '';
+    $('#send').disabled = true; $('#send').textContent = '送出中…';
+    let no = Math.floor(Math.random() * 200) + 1;
+    if (SUBMIT_URL) {
+      // Apps Script 回傳 { ok, no } 或 { ok:false, error }；用 text/plain 送，避開跨網域預檢
+      const data = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, website: form.website.value });
+      const r = await fetch(SUBMIT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: data })
+        .then((x) => x.json()).catch(() => null);
+      if (!r || !r.ok) {
+        const ERR = {
+          dup: `這個學號已經報名過了（序號 ${r?.no ?? ''}）。要改資料請找系學會。`,
+          closed: '報名已經在 12.15 截止了。',
+          bad: '資料有地方不對，請檢查系所、學號和姓名。',
+        };
+        $('#msg').textContent = ERR[r?.error] || '網路不穩，沒有送出成功，請再按一次。';
+        show(3);
+        return;
+      }
+      no = r.no;
+    } else {
+      await new Promise((res) => setTimeout(res, 500));
+    }
+    showDone(v, no);
+  });
+
+  $('#again').addEventListener('click', () => {
+    form.reset(); body.classList.remove('is-done'); $('#eyebrow').textContent = '報名 ENTRY'; $('#msg').textContent = ''; show(1, -1);
+  });
+
+  // 檢查用：?step=1/2/3/done 直接停在棋盤定格＋那一題
+  const st = Q.get('step');
+  if (st === 'done') showDone({ name: '王小明', dept: '資工系', member: '系會員', sid: 'C112123456', fee: '150' }, 37);
+  else if (st) show(Math.min(3, Math.max(1, +st)));
+  else show(1);
+</script>
+<script type="module">
+  // 3D 載不起來（手機不支援 WebGL）或太慢 → 換 2D 版報名頁
+  const v = '?v=' + Date.now();
+  import('./src/register3d/entry.js' + v).catch((e) => {
+    console.warn('[入口] 改用 2D 版', e);
+    if (!new URLSearchParams(location.search).has('no2d')) location.replace('register.html' + location.search);
+  });
+</script>
+</body>
+</html>
