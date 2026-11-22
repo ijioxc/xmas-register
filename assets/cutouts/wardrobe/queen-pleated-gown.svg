@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-75 80 150 140">
+  <title>象牙白直褶長裙與酒紅披肩</title>
+  <!-- Independent paper design studying the column and wrap of The Met, Delphos, C.I.58.49.22a,b. -->
+  <g stroke-linejoin="round">
+    <path d="M-13 87 Q-1 96 12 86 L20 92 15 127 Q19 153 35 201 Q44 208 50 210 Q35 218 20 211 Q8 220 -4 213 Q-23 218 -37 209 Q-24 171 -18 132 L-22 94Z" fill="#e5d4b1" stroke="#fbf4df" stroke-width="4"/>
+    <g fill="#bdaa89">
+      <path d="M-14 103 Q-10 151 -31 209 L-26 212 Q-11 158 -14 103Z"/>
+      <path d="M-6 107 Q-2 159 -16 211 L-10 213 Q0 164 -6 107Z"/>
+      <path d="M5 105 Q2 158 5 212 L12 214 Q4 154 5 105Z"/>
+      <path d="M13 107 Q12 163 25 210 L32 213 Q16 160 13 107Z"/>
+    </g>
+    <path d="M-11 85 Q-23 87 -27 96 Q-32 111 -28 140 L-42 186 -32 196 Q-12 160 -14 134 Q-17 106 -8 92Z" fill="#833645" stroke="#f4ead7" stroke-width="2.5"/>
+    <path d="M12 85 Q29 88 31 105 Q32 125 25 136 Q28 157 50 180 L39 194 Q17 164 17 139 Q17 119 12 112 Q20 94 12 85Z" fill="#a65059" stroke="#f4ead7" stroke-width="2.5"/>
+    <path d="M-23 97 Q-30 137 -18 119 M22 96 Q27 111 20 130 M25 147 Q28 169 43 183" fill="none" stroke="#632638" stroke-width="1.4"/>
+  </g>
+</svg>

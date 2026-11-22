@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-75 80 150 140">
+  <title>墨綠雙排釦燕尾服</title>
+  <!-- Garment study after The Met, Tail coat, 1986.179.2. -->
+  <g stroke="#292b23" stroke-linejoin="round">
+    <path d="M-17 86 -39 93 Q-47 94 -50 106 L-60 169 -48 174 -36 131 -38 156 -34 209 -5 194 6 159 10 196 37 213 31 154 34 123 44 169 55 166 48 108 Q46 98 34 95 L13 85Z" fill="#374c3c" stroke="#f4ead7" stroke-width="4" paint-order="stroke"/>
+    <path d="M-35 149 -6 157 -31 204Z M12 157 26 156 34 208 18 193Z" fill="#192e28"/>
+    <path d="M-16 87 12 86 -1 111Z" fill="#f4efe2"/>
+    <path d="M-18 85 -36 96 -24 99 -31 104 -5 123 -1 111Z" fill="#64715a"/>
+    <path d="M13 85 30 95 20 99 25 103 -7 129 -1 110Z" fill="#506049"/>
+    <path d="M-32 146 Q-14 155 4 151 L26 144 29 152 Q1 163 -34 153Z" fill="#2c4134"/>
+    <path d="M-46 116 -53 160 M-56 163 -48 166 M38 114 48 155 M43 161 53 158" fill="none" opacity=".65"/>
+    <g fill="#bdac82" stroke-width=".6">
+      <circle cx="-13" cy="123" r="1.8"/><circle cx="10" cy="118" r="1.8"/>
+      <circle cx="-13" cy="134" r="1.8"/><circle cx="9" cy="130" r="1.8"/>
+      <circle cx="-13" cy="144" r="1.8"/><circle cx="8" cy="141" r="1.8"/>
+    </g>
+  </g>
+</svg>

@@ -181,5 +181,5 @@ export function buildPieces(env, P0 = {}) {
     mat = MATS.includes(m) ? m : 'wood';
     for (const k of ['queen', 'tree']) for (const mesh of bodies[k]) mesh.material = M[mat][k];
   }
-  return { group, setMat, get mat() { return mat; }, star: st };
+  return { group, queen, tree, setMat, get mat() { return mat; }, star: st };
 }

@@ -1,0 +1,3 @@
+原本從 xmas-star-tree 分支 exp/star-tree-tunnel 的 f98721a 複製（該分支已封存，標籤 archive/star-tree-tunnel）。
+現在直接在這個資料夾（xmas-register）修改。
+改動：viewD.js 的 post() 支援直幅畫布 (W, H)；手機 (觸控) 影子貼圖 2048，電腦維持 4096。

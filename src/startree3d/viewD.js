@@ -4,7 +4,7 @@
 // 光斑公式：任何一點 P 先沿著「光源 → P」投影到地面，再看它在不在地面的鑰匙孔裡，
 // 所以棋盤、棋子、影子都吃同一個光斑。
 import * as THREE from 'three';
-import { buildPieces, MATS, PIECE_DEFAULTS } from './pieces3d.js';
+import { buildPieces, MATS, PIECE_DEFAULTS } from './pieces3d.js?v=2';
 import { buildCutouts, CUT_DEFAULTS, ANIM_DEFAULTS } from './cutouts3d.js?v=3';
 // 滑桿面板調的全部參數 (棋子形狀＋材質＋剪紙棋子＋光＋鏡頭)
 export const TUNE_DEFAULTS = { ...PIECE_DEFAULTS, ...CUT_DEFAULTS, ...ANIM_DEFAULTS, pitch: 22, light: 1, haze: 1, dist: 1150, enterH: 6000, amb: 1, fade0: 0.6, fade1: 1.1, turn0: 1.0 };
@@ -355,6 +355,7 @@ export function createViewD(renderer) {
     }));
     shadow.position.copy(card.position); shadow.rotation.copy(card.rotation);
     shadow.renderOrder = 1; card.renderOrder = 2;
+    p.card = card;
     p.shadow = shadow;
     scene.add(shadow, card);
   }
@@ -459,5 +460,33 @@ export function createViewD(renderer) {
     pieces3d.setMat(T.mat);
   }
   const nextMat = () => pieces3d && pieces3d.setMat(MATS[(MATS.indexOf(pieces3d.mat) + 1) % MATS.length]);
-  return { scene, camera, set, post, setMat, nextMat, tune, cutReady, get env() { return env; }, get cutouts() { return cutouts; }, get mat() { return pieces3d ? pieces3d.mat : 'card'; } };
+  function placeDressScene(retreat, hop, lift, exit) {
+    const positionPiece = (piece, x, z, column) => {
+      piece.position.x = THREE.MathUtils.lerp(x, (column - 3.5) * SQ, retreat);
+      piece.position.z = THREE.MathUtils.lerp(z, -3.5 * SQ, retreat);
+    };
+    if (pieces3d) {
+      const { queen, tree } = pieces3d;
+      const ease = (start, end) => THREE.MathUtils.smoothstep(exit, start, end);
+      const pickup = ease(0, 0.34), leave = ease(0.29, 1);
+      queen.position.set(-50 - 100 * pickup - 265 * leave, 0.6 - 185 * ease(0.72, 1), -150 - 75 * ease(0, 0.23) - 125 * leave);
+      tree.position.set(50 - 385 * ease(0, 1), 0.6 - 160 * ease(0.72, 1), -250 - 100 * ease(0, 1));
+      queen.visible = tree.visible = exit < 1;
+    }
+    pieces.forEach(({ card, shadow, x, z }, column) => {
+      positionPiece(card, x, z, column);
+      shadow.position.copy(card.position);
+    });
+    const herald = cutouts?.items.h;
+    if (herald) {
+      const crossing = THREE.MathUtils.smoothstep(exit, 0.12, 0.51);
+      const center = Math.max(hop, crossing);
+      herald.position.x = THREE.MathUtils.lerp(herald.position.x, 0, center);
+      herald.position.z = THREE.MathUtils.lerp(herald.position.z, -150, center);
+      herald.position.y += Math.max(lift, 27 * Math.sin(Math.PI * crossing));
+    }
+    return pieces3d?.queen;
+  }
+
+  return { scene, camera, lightPosition: LS.clone(), set, placeDressScene, post, setMat, nextMat, tune, cutReady, get env() { return env; }, get cutouts() { return cutouts; }, get mat() { return pieces3d ? pieces3d.mat : 'card'; } };
 }

@@ -1,3 +1,4 @@
+import { createFittingRoom, SHOE_SCALE } from './dress.js?v=40';
 // 報名網頁的 3D 入口（直幅、手機優先）
 // 從 xmas-star-tree/src/startree3d/main.js (f98721a) 複製過來，只改：畫布改直幅 W×H、拿掉滑桿／輸出／滑鼠搖、
 // 加「滑一下就自動播到棋盤定格」的時間軸。編輯 3D 請回 xmas-star-tree 改。
@@ -10,8 +11,8 @@
 // 紙的顏色、陰影、光全部照 2D 公式，寫在「海報座標」裡（每片紙自己的座標），
 // 換視角時顏色會黏在紙上走。
 import * as THREE from 'three';
-import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=7';   // ?v= 改版就加 1，避免瀏覽器用舊快取
-import { createGuest } from './guest.js?v=14';
+import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=12';   // ?v= 改版就加 1，避免瀏覽器用舊快取
+import { createGuest } from './guest.js?v=17';
 const tune = { ...TUNE_DEFAULTS };   // 用 3D 編輯頁定稿的滑桿預設值
 // 對話框浮在上面 (預設) → 愛麗絲吊高、往右一點讓位；矮手機畫面上緣比較低，提少一點免得頭被切掉 (?ay= ?ax= 可調)
 { const qq = new URLSearchParams(location.search);
@@ -420,7 +421,141 @@ function render(canvas, W, H) {
 }
 
 let LIFT;   // 讀一次 CSS 就好
+let departmentExit = 0;
 let guest = null;   // 隱藏金牌「其他系」(guest.js，掛在傳令兔手上)
+const dressScene = { retreat: 0, hop: 0, lift: 0 };
+let runnerElapsed = null, stepRunElapsed = null, stepRunFrame;
+let runnerOnLeft = false, stepRunQueued = false;
+const RUNNER_EXIT = 430, RUNNER_RETURN = 540, TICKET_REVEAL = 1030, RUNNER_END = 1580, STEP_RUN_END = 720;
+
+function placeFinishScene() {
+  const { r: runner, h: herald, g: alice } = viewD.cutouts.items;
+  if (runnerElapsed === null) {
+    runner.visible = herald.visible = alice.visible = false;
+    return;
+  }
+  herald.visible = runnerElapsed < TICKET_REVEAL + 340;
+  const retract = sstep(TICKET_REVEAL - 100, TICKET_REVEAL + 350, runnerElapsed);
+  alice.position.y += 420 * retract;
+  alice.visible = retract < 1;
+
+  placeRunner(runner, runnerElapsed, true);
+}
+
+function placeRunner(runner, elapsed, finish) {
+  const camera = viewD.camera;
+  const homeX = runner.position.x, homeZ = runner.position.z;
+  const bounds = new THREE.Vector3();
+  function offscreenX(z, side) {
+    const center = bounds.set(0, runner.position.y, z).project(camera).x;
+    const right = bounds.set(1, runner.position.y, z).project(camera).x;
+    return (side - center) / (right - center) + side * runner.scale.x;
+  }
+
+  if (!finish) {
+    const t = elapsed / STEP_RUN_END;
+    const left = offscreenX(homeZ, -1);
+    if (runnerOnLeft) {
+      runner.position.x = lerp(left, homeX, t + t ** 2 - t ** 3);
+    } else {
+      runner.position.x = lerp(homeX, left, t ** 1.25);
+      runner.scale.x *= -1;
+    }
+  } else if (elapsed < RUNNER_EXIT) {
+    const t = elapsed / RUNNER_EXIT;
+    const z = homeZ - 48 * t;
+    runner.position.x = lerp(homeX, offscreenX(z, 1), t ** 1.4);
+    runner.position.z = z;
+  } else if (elapsed < RUNNER_RETURN) {
+    runner.visible = false;
+    return;
+  } else {
+    const t = (elapsed - RUNNER_RETURN) / (RUNNER_END - RUNNER_RETURN);
+    const z = lerp(homeZ - 70, homeZ, t);
+    runner.position.x = lerp(offscreenX(z, -1), offscreenX(z, 1), t);
+    runner.position.z = z;
+  }
+
+  const stride = (!finish || elapsed < RUNNER_EXIT ? elapsed : elapsed - RUNNER_RETURN) / 165;
+  const settle = finish || !runnerOnLeft ? 1 : 1 - sstep(STEP_RUN_END - 180, STEP_RUN_END, elapsed);
+  const effort = sstep(0, 100, elapsed) * settle;
+  const hop = Math.abs(Math.sin(Math.PI * stride));
+  runner.position.y += 15 * hop * effort;
+  const direction = runner.scale.x < 0 ? -1 : 1;
+  if (direction < 0) runner.rotation.z *= -1;
+  runner.rotation.z -= direction * (0.11 + 0.06 * Math.sin(2 * Math.PI * stride)) * effort;
+  runner.scale.y *= 1 - 0.06 * (1 - hop) ** 3 * effort;
+}
+
+function stopStepRun() {
+  cancelAnimationFrame(stepRunFrame);
+  stepRunElapsed = null;
+  runnerOnLeft = false;
+  stepRunQueued = false;
+}
+
+function playStepRunner() {
+  if (stepRunElapsed !== null) {
+    stepRunQueued = true;
+    return;
+  }
+  if (!viewD.cutouts?.items.r || document.hidden ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const start = performance.now();
+  stepRunElapsed = 0;
+  function frame(now) {
+    const elapsed = now - start;
+    stepRunElapsed = elapsed < STEP_RUN_END ? Math.max(0, elapsed) : null;
+    if (stepRunElapsed === null) runnerOnLeft = !runnerOnLeft;
+    draw();
+    if (stepRunElapsed !== null) stepRunFrame = requestAnimationFrame(frame);
+    else if (stepRunQueued || (runnerOnLeft && document.querySelector('#stage:has(.step.on[data-step="3"]) #wardrobeEgg'))) {
+      stepRunQueued = false;
+      playStepRunner();
+    }
+  }
+  stepRunFrame = requestAnimationFrame(frame);
+}
+window.playStepRunner = playStepRunner;
+
+window.playFinishScene = revealTicket => {
+  stopStepRun();
+  let revealed = false;
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    revealTicket();
+  }
+  if (!dState.on || !viewD.cutouts?.items.r || document.hidden ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    reveal();
+    if (dState.on) draw();
+    return;
+  }
+  const start = performance.now();
+  return new Promise((resolve, reject) => {
+    function frame(now) {
+      const elapsed = now - start;
+      runnerElapsed = elapsed < RUNNER_END ? Math.max(0, elapsed) : null;
+      try {
+        if (elapsed >= TICKET_REVEAL) reveal();
+        draw();
+      } catch (error) {
+        runnerElapsed = null;
+        reject(error);
+        return;
+      }
+      if (runnerElapsed === null) resolve();
+      else requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  });
+};
+window.resetFinishScene = () => {
+  runnerElapsed = null;
+  draw();
+};
+
 function applyView() {
   placeCameraA(0, 0);
   fitCamD();
@@ -435,6 +570,14 @@ function applyView() {
     // 棋盤一出現就是往上推好的位置 (CSS --shift，例：-14% → NDC +0.28)，落地時不再跳
     c.lift = (LIFT ??= -2 * (parseFloat(getComputedStyle(document.body).getPropertyValue('--shift')) / 100 || 0));
     viewD.set(1, 0, 0, c);
+    const queen = viewD.placeDressScene(dressScene.retreat, dressScene.hop, dressScene.lift, departmentExit);
+    guest?.place(queen, departmentExit);
+    if (viewD.cutouts && (runnerElapsed !== null || document.body.classList.contains('is-done'))) placeFinishScene();
+    else if (dState.on && viewD.cutouts) {
+      const runner = viewD.cutouts.items.r;
+      if (stepRunElapsed !== null) placeRunner(runner, stepRunElapsed, false);
+      else if (runnerOnLeft) runner.visible = false;
+    }
   }
 }
 
@@ -464,7 +607,49 @@ function measure() {
   const k = Math.min(devicePixelRatio || 1, 2, Math.sqrt(MAXPX / (r.width * r.height)));
   W = Math.round(r.width * k); H = Math.round(r.height * k);
 }
-function draw() { applyView(); render(canvas, W, H); }
+let wardrobeRacks;
+const runnerHead = new THREE.Vector3();
+function placeRunnerSpeech() {
+  const speech = document.getElementById('wardrobeEgg');
+  if (!speech) return;
+  const runner = viewD.cutouts?.items.r;
+  const waitingForStop = !speech.dataset.revealed && (runnerOnLeft || stepRunElapsed !== null || stepRunQueued);
+  if (!dState.on || !runner?.visible || waitingForStop) {
+    speech.style.visibility = 'hidden';
+    return;
+  }
+  runner.localToWorld(runnerHead.set(0.23, 0.93, 0)).project(viewD.camera);
+  const width = stage.clientWidth, x = (runnerHead.x + 1) * width / 2;
+  const left = THREE.MathUtils.clamp(x - speech.offsetWidth / 2, 6, width - speech.offsetWidth - 6);
+  speech.style.visibility = Math.abs(runnerHead.x) < 1 ? 'visible' : 'hidden';
+  if (speech.style.visibility === 'visible') speech.dataset.revealed = 'true';
+  speech.style.left = left + 'px';
+  speech.style.top = (1 - runnerHead.y) * stage.clientHeight / 2 + 'px';
+  speech.style.setProperty('--tail', THREE.MathUtils.clamp(x - left, 12, speech.offsetWidth - 12) + 'px');
+}
+window.placeRunnerSpeech = placeRunnerSpeech;
+function draw() {
+  applyView(); render(canvas, W, H);
+  placeRunnerSpeech();
+  const map=document.querySelector('.wardrobe-map');
+  if (!map || map.hidden || !dState.on || !wardrobeRacks) return;
+  for (const button of map.children) {
+    const { family, index } = button.dataset;
+    const rack = wardrobeRacks[family];
+    button.hidden = !rack.group.visible;
+    button.disabled = family !== map.dataset.activeFamily;
+    if (button.hidden) continue;
+    const i = Number(index);
+    const x = rack.pieces[i].position.x;
+    const z = rack.pieces[i].position.z;
+    const project=(y,dz)=>new THREE.Vector3(x,y,z+dz).project(viewD.camera);
+    const shoeHeight = button.dataset.id === 'boot' ? 61 : 34;
+    const top = project(i < 4 ? 130 : shoeHeight * SHOE_SCALE, 0);
+    const foot = project(0, i < 4 ? 44 : 36);
+    button.style.left=(foot.x+1)*50+'%'; button.style.top=(1-top.y)*50+'%';
+    button.style.width='19%'; button.style.height='calc('+((top.y-foot.y)*50)+'% + 12px)';
+  }
+}
 
 // ---- 播放 ----
 const body = document.body;
@@ -512,7 +697,10 @@ function rewind() {
   }
   requestAnimationFrame(back);
 }
-addEventListener('entry:rewind', rewind);
+addEventListener('entry:rewind', () => {
+  stopStepRun();
+  rewind();
+});
 
 addEventListener('resize', () => { measure(); if (!playing) draw(); });
 
@@ -520,6 +708,26 @@ addEventListener('resize', () => { measure(); if (!playing) draw(); });
 measure();
 await viewD.cutReady;
 guest = await createGuest(viewD.cutouts.items.h, tune.cutGlow);
+departmentExit = Number(!document.querySelector('.step.on[data-step="1"]'));
+let departmentFrame, departmentStageOn = departmentExit === 0;
+window.setDepartmentStage = on => {
+  if (on === departmentStageOn) return;
+  departmentStageOn = on;
+  cancelAnimationFrame(departmentFrame);
+  const from = departmentExit, to = Number(!on);
+  const start = performance.now();
+  const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : (on ? 650 : 1550);
+  function move(now) {
+    const elapsed = now - start;
+    departmentExit = lerp(from, to, duration ? Math.min(1, elapsed / duration) : 1);
+    draw();
+    dispatchEvent(new Event('entry:herald'));
+    if (elapsed < duration) departmentFrame = requestAnimationFrame(move);
+    else dispatchEvent(new Event('entry:guestmoved'));
+  }
+  move(start);
+};
+
 
 // ---- 其他系金牌：網頁那邊選中／取消 → 牌往上舉轉正 / 放回兔子手上；呼吸燈按鈕要知道牌在畫面哪裡 ----
 {
@@ -603,10 +811,52 @@ window.__ready = true;
 // 對話框的尾巴要指到兔子；鏡頭定格後才有意義
 function heraldAnchor() {
   const c = viewD.camera; c.updateMatrixWorld();
-  const x = tune.hX, y0 = 0.6 + tune.hY, z = tune.hZ, h = tune.hH;
+  const position = viewD.cutouts?.items.h.position;
+  const x = position?.x ?? tune.hX, y0 = position?.y ?? (0.6 + tune.hY);
+  const z = position?.z ?? tune.hZ, h = tune.hH;
   const pt = (yy, dx = 0) => { const p = new THREE.Vector3(x + dx, yy, z).project(c); return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 }; };
   return { ear: pt(y0 + h * 1.0), mouth: pt(y0 + h * 0.66, h * 0.1), chest: pt(y0 + h * 0.45), feet: pt(y0), right: pt(y0 + h * 0.45, h * 0.32) };
 }
 window.__herald = heraldAnchor;
 dispatchEvent(new Event('entry:herald'));
 addEventListener('resize', () => dispatchEvent(new Event('entry:herald')));
+
+let dressStageOn = false, dressSceneFrame;
+window.setDressStage = on => {
+  if (on === dressStageOn) return;
+  dressStageOn = on;
+  cancelAnimationFrame(dressSceneFrame);
+  const from = { ...dressScene }, end = Number(on);
+  const start = performance.now();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function move(now) {
+    const elapsed = reduced ? 760 : now - start;
+    const retreat = sstep(on ? 0 : 190, on ? 560 : 760, elapsed);
+    const hop = sstep(on ? 240 : 0, on ? 760 : 520, elapsed);
+    dressScene.retreat = lerp(from.retreat, end, retreat);
+    dressScene.hop = lerp(from.hop, end, hop);
+    dressScene.lift = lerp(from.lift, 0, hop) + 27 * Math.sin(Math.PI * hop) * Math.abs(end - from.hop);
+    draw();
+    dispatchEvent(new Event('entry:herald'));
+    if (elapsed < 760) dressSceneFrame = requestAnimationFrame(move);
+  }
+  move(start);
+};
+
+let displayOutfit;
+window.setBoardOutfit = (kind, family) => {
+  if (!displayOutfit && !kind) return;
+  document.querySelector('.wardrobe-map').dataset.activeFamily = family ?? '';
+  displayOutfit ??= createFittingRoom(viewD.scene, viewD.lightPosition, racks => {
+    wardrobeRacks = racks;
+    draw();
+  });
+  displayOutfit(kind, family);
+};
+const activeStep = document.querySelector('.step.on');
+if (Number(activeStep?.dataset.step) >= 2 || body.classList.contains('is-done')) {
+  window.setDressStage(true);
+}
+if (activeStep?.dataset.step === '3' && activeStep.dataset.family) {
+  window.setBoardOutfit(activeStep.dataset.last, activeStep.dataset.family);
+}
