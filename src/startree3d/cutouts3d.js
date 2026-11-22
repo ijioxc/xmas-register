@@ -10,12 +10,13 @@ export const CUT_DEFAULTS = {
   rX: 230, rZ: -330, rY: 0, rH: 110, rYaw: -0.1, rTilt: 0, rRoll: -0.14,      // 奔跑兔 h8 角落，衝出棋盤
   gX: 30, gZ: -120, gY: 200, gH: 95, gYaw: 0, gTilt: 0, gRoll: 0,  // 女孩：吊在光柱裡，正面朝鏡頭
   cutGlow: 0.35,   // 紙片自己亮多少 (不靠聚光燈也看得到)
+  feet: 1,         // 兔子腳下往後摺的白色紙腳：1 = 顯示，0 = 拿掉
 };
 // 第二段動畫節奏 (u = 滾輪進度；兩顆棋子定格在 1.6，剪紙全部站好在 2.6；鏡頭兩段都一樣不動)
 export const ANIM_DEFAULTS = {
   gA: 1.75, gSnap: 2.05, gB: 2.20, gDrop: 700, gSpin: 1, gBounce: 40,   // 愛麗絲：開始掉、紙條拉緊、停住；掉多高、轉幾圈、彈多大
   hA: 1.95, hB: 2.30, hFrom: -470, hHops: 3, hHopH: 20, hWob: 0.15,   // 傳令兔：正面朝鏡頭從 x hFrom 跳進來，跳幾下、多高、左右搖多少
-  rA: 2.20, rB: 2.50, rFrom: -380, rUp: 0.12, rLean: 0.3, rHops: 7, rHopH: 28,   // 奔跑兔：從 x rFrom 立起來 (佔 rUp 的時間)，往右衝，衝刺時前傾、跳幾下、多高
+  rA: 2.20, rB: 2.50, rFrom: -380, rUp: 0.12, rLean: 0.3, rHops: 7, rHopH: 28, rDash: 0,   // rDash 1 = 一立起來就全速衝 (不慢慢起步)   // 奔跑兔：從 x rFrom 立起來 (佔 rUp 的時間)，往右衝，衝刺時前傾、跳幾下、多高
 };
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const prog = (a, b, u) => clamp01((u - a) / Math.max(1e-6, b - a));
@@ -107,6 +108,7 @@ export async function buildCutouts() {
       o.rotation.set(T[k + 'Tilt'], T[k + 'Yaw'], T[k + 'Roll']);
       o.scale.setScalar(T[k + 'H']);
       o.visible = true;
+      if (o.userData.foot) o.userData.foot.visible = T.feet !== 0;
     }
     // 愛麗絲：越掉越快、邊掉邊轉 → 紙條啪一下拉緊 → 上下彈兩下停住
     {
@@ -138,12 +140,12 @@ export async function buildCutouts() {
       o.visible = u > T.rA;
       const up = clamp01(t / T.rUp), s = clamp01((t - T.rUp) / (1 - T.rUp));
       o.rotation.x = -Math.PI / 2 + (T.rTilt + Math.PI / 2) * (1 - (1 - up) ** 3);
-      o.userData.foot.visible = up > 0.6;
-      o.position.x = T.rFrom + (T.rX - T.rFrom) * ss(s);
+      o.userData.foot.visible = T.feet !== 0 && up > 0.6;
+      o.position.x = T.rFrom + (T.rX - T.rFrom) * (T.rDash ? 1 - (1 - s) ** 2.2 : ss(s));
       o.position.y += T.rHopH * Math.abs(Math.sin(Math.PI * T.rHops * s)) * (1 - 0.6 * s);
       const brake = clamp01((s - 0.8) / 0.2);
       o.rotation.z -= T.rLean * Math.sin(Math.PI * s) - 0.5 * T.rLean * Math.sin(Math.PI * brake);
     }
   }
-  return { group, place };
+  return { group, place, items };   // items.h / .r / .g = 各角色的 pivot (報名頁把金牌掛在傳令兔手上)
 }

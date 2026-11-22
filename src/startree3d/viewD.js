@@ -5,7 +5,7 @@
 // 所以棋盤、棋子、影子都吃同一個光斑。
 import * as THREE from 'three';
 import { buildPieces, MATS, PIECE_DEFAULTS } from './pieces3d.js';
-import { buildCutouts, CUT_DEFAULTS, ANIM_DEFAULTS } from './cutouts3d.js';
+import { buildCutouts, CUT_DEFAULTS, ANIM_DEFAULTS } from './cutouts3d.js?v=3';
 // 滑桿面板調的全部參數 (棋子形狀＋材質＋剪紙棋子＋光＋鏡頭)
 export const TUNE_DEFAULTS = { ...PIECE_DEFAULTS, ...CUT_DEFAULTS, ...ANIM_DEFAULTS, pitch: 22, light: 1, haze: 1, dist: 1150, enterH: 6000, amb: 1, fade0: 0.6, fade1: 1.1, turn0: 1.0 };
 
@@ -378,22 +378,34 @@ export function createViewD(renderer) {
     const dist = cam ? cam.dist : T.dist;
     const pitchEnd = THREE.MathUtils.degToRad(+q.get('dpitch') || T.pitch);
     if (cutouts) cutouts.place(T, lastU);
-    const tg = TARGET_TOP.clone().lerp(target, k);
-    const ph = THREE.MathUtils.lerp(Math.PI / 2, pitchEnd, k) + pitch * 0.6;
-    const Y = new THREE.Vector3(0, 1, 0);
-    const off = new THREE.Vector3(0, Math.sin(ph), Math.cos(ph)).multiplyScalar(dist).applyAxisAngle(Y, yaw);
-    camera.up.set(0, Math.cos(ph), -Math.sin(ph)).applyAxisAngle(Y, yaw);   // 正上方時畫面上方 = 棋盤遠端 → 光斑鑰匙孔正立
-    camera.position.copy(tg).add(off);
-    camera.lookAt(tg);
-    camera.clearViewOffset();
-    // 對齊：把光斑圓心推到畫面上的 align 點 (NDC)，alignK 0–1 控制推多少 → 跟樹尖鑰匙孔窗疊在一起
-    if (cam && cam.align && cam.alignK > 0) {
+    const pose = (kk, dd, yw, pt) => {
+      const tg = TARGET_TOP.clone().lerp(target, kk);
+      const ph = THREE.MathUtils.lerp(Math.PI / 2, pitchEnd, kk) + pt * 0.6;
+      const Y = new THREE.Vector3(0, 1, 0);
+      const off = new THREE.Vector3(0, Math.sin(ph), Math.cos(ph)).multiplyScalar(dd).applyAxisAngle(Y, yw);
+      camera.up.set(0, Math.cos(ph), -Math.sin(ph)).applyAxisAngle(Y, yw);   // 正上方時畫面上方 = 棋盤遠端 → 光斑鑰匙孔正立
+      camera.position.copy(tg).add(off);
+      camera.lookAt(tg);
+      camera.clearViewOffset();
       camera.updateMatrixWorld();
-      const p = C3.clone().project(camera);
-      const sx = (cam.align.x - p.x) * cam.alignK, sy = (cam.align.y - p.y) * cam.alignK;
-      // setViewOffset 會把 aspect 改成 fullWidth/fullHeight → 寬用 2·aspect，直幅畫面才不會被擠窄 (正方形時跟原本一樣)
-      const a = camera.aspect;
-      camera.setViewOffset(2 * a, 2, -sx * a, sy, 2 * a, 2);
+    };
+    // 先算「最後定格」時光斑圓心在畫面哪裡 (沒有 offset)
+    pose(1, T.dist, 0, 0);
+    const pEnd = C3.clone().project(camera);
+    pose(k, dist, yaw, pitch);
+    // 光斑圓心在畫面上的位置：從鑰匙孔窗 (align) 一路單向移到最後定格位置 (+ lift = 報名頁整體上推)；
+    // alignK 1 → 0 跟著鏡頭下降一起走，不會先往上再往下 (原本 0.9–1.0 就放掉 align，之後隨鏡頭轉角亂跑)
+    const lift = (cam && cam.lift) || 0;
+    if (cam && (cam.align || lift)) {
+      const p = C3.clone().project(camera), m = cam.align ? cam.alignK : 0;
+      const tx = cam.align ? THREE.MathUtils.lerp(pEnd.x, cam.align.x, m) : p.x;
+      const ty = cam.align ? THREE.MathUtils.lerp(pEnd.y + lift, cam.align.y, m) : p.y + lift;
+      const sx = tx - p.x, sy = ty - p.y;
+      if (Math.abs(sx) + Math.abs(sy) > 1e-6) {
+        // setViewOffset 會把 aspect 改成 fullWidth/fullHeight → 寬用 2·aspect，直幅畫面才不會被擠窄 (正方形時跟原本一樣)
+        const a = camera.aspect;
+        camera.setViewOffset(2 * a, 2, -sx * a, sy, 2 * a, 2);
+      }
     }
   }
   set(1);
@@ -447,5 +459,5 @@ export function createViewD(renderer) {
     pieces3d.setMat(T.mat);
   }
   const nextMat = () => pieces3d && pieces3d.setMat(MATS[(MATS.indexOf(pieces3d.mat) + 1) % MATS.length]);
-  return { scene, camera, set, post, setMat, nextMat, tune, cutReady, get mat() { return pieces3d ? pieces3d.mat : 'card'; } };
+  return { scene, camera, set, post, setMat, nextMat, tune, cutReady, get env() { return env; }, get cutouts() { return cutouts; }, get mat() { return pieces3d ? pieces3d.mat : 'card'; } };
 }

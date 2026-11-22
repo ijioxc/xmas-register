@@ -10,7 +10,8 @@
 // 紙的顏色、陰影、光全部照 2D 公式，寫在「海報座標」裡（每片紙自己的座標），
 // 換視角時顏色會黏在紙上走。
 import * as THREE from 'three';
-import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=2';   // ?v= 改版就加 1，避免瀏覽器用舊快取
+import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=7';   // ?v= 改版就加 1，避免瀏覽器用舊快取
+import { createGuest } from './guest.js?v=14';
 const tune = { ...TUNE_DEFAULTS };   // 用 3D 編輯頁定稿的滑桿預設值
 // 對話框浮在上面 (預設) → 愛麗絲吊高、往右一點讓位；矮手機畫面上緣比較低，提少一點免得頭被切掉 (?ay= ?ax= 可調)
 { const qq = new URLSearchParams(location.search);
@@ -326,7 +327,7 @@ const fallL = (() => {
 })();
 const PH = { WIN0: 0.8, TURN1: 1.55 };   // WIN0 = 開始往下降；窗什麼時候出現、多快變亮看滑桿 fade0 / fade1
 const P1 = 1.6;     // 第一段 (乾淨的立體棋盤) 定格
-const UMAX = 2.6;   // 第二段 (剪紙棋子出場) 定格
+const UMAX = 2.12;  // 第二段 (剪紙棋子出場) 定格
 const dState = { on: false, win: false };
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * t * (t * (6 * t - 15) + 10); };
 function camD(u) {
@@ -368,7 +369,11 @@ function renderWindow(S, SH, cam) {
 
 // ════════════════ 以下是報名網頁新加的 ════════════════
 // 剪紙提早出場：鏡頭還在降最後一段，愛麗絲就開始掉 → 不會停在空棋盤上 (原本 gA 1.75 / hA 1.95 / rA 2.2)
-Object.assign(tune, { gA: 1.28, gSnap: 1.68, gB: 1.90, hA: 1.60, hB: 2.10, rA: 1.95, rB: 2.45 });
+// 出場順序：右邊奔跑兔先衝出來 → 愛麗絲、傳令兔同時出場；集中在同一段時間跑完
+// 奔跑兔：鏡頭還在降、一露頭就直接衝出來 (rDash)；傳令兔再提早一點；拿掉腳下白色紙腳
+Object.assign(tune, { rA: 1.30, rB: 1.72, rUp: 0.08, rDash: 1, gA: 1.60, gSnap: 1.92, gB: 2.08, hA: 1.48, hB: 1.96, feet: 0 });
+// 傳令兔站前面一點 (還在同一格白格子裡：z −200…−100)，講話時比較大、手上的金牌也跟著往前
+tune.hZ = -112;
 viewD.tune(tune);
 
 // 棋盤鏡頭配合直幅：橫向視野 = 原本正方形的 dz 倍，直向自動算
@@ -414,6 +419,8 @@ function render(canvas, W, H) {
   ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 }
 
+let LIFT;   // 讀一次 CSS 就好
+let guest = null;   // 隱藏金牌「其他系」(guest.js，掛在傳令兔手上)
 function applyView() {
   placeCameraA(0, 0);
   fitCamD();
@@ -424,15 +431,18 @@ function applyView() {
     const c = camD(view.u);
     camera.updateMatrixWorld();
     c.align = new THREE.Vector3(0, P.H * (1 - Math.pow(P.ratio, N)), 0).project(camera);
-    c.alignK = 1 - sstep(0.9, 1.0, view.u);
+    c.alignK = 1 - sstep(0.9, PH.TURN1, view.u);   // 光斑從鑰匙孔窗一路滑到定格位置，跟鏡頭下降同步
+    // 棋盤一出現就是往上推好的位置 (CSS --shift，例：-14% → NDC +0.28)，落地時不再跳
+    c.lift = (LIFT ??= -2 * (parseFloat(getComputedStyle(document.body).getPropertyValue('--shift')) / 100 || 0));
     viewD.set(1, 0, 0, c);
   }
 }
 
 // ---- 時間軸：秒 → u (u 0–1 掉進鑰匙孔，1–1.6 鏡頭降到棋盤，1.6–2.6 剪紙人物出場) ----
 // 關鍵格 [秒, u]；中間速度接續，頭尾慢慢起步／停下。?dur= 改總長，?t=秒數 定格在那一秒
-const DUR = +q.get('dur') || 6.4;
-const KEYS = [[0, 0], [2.4, 1], [3.8, P1], [6.4, UMAX]].map(([t, u]) => [t * DUR / 6.4, u]);
+const DUR = +q.get('dur') || 5.3;
+const KEYS = [[0, 0], [2.4, 1], [3.8, P1], [5.3, UMAX]].map(([t, u]) => [t * DUR / 5.3, u]);
+const TALK_U = 2.0;   // 傳令兔快站好就跳出對話框 (不等整段結束)
 function uAt(t) {
   if (t <= 0) return 0;
   if (t >= DUR) return UMAX;
@@ -464,6 +474,7 @@ function tick(now) {
   if (t0 === null) t0 = now;
   const t = (now - t0) / 1000;
   view.u = uAt(t);
+  if (view.u >= TALK_U && !body.classList.contains('talkon')) { body.classList.add('talkon'); dispatchEvent(new Event('entry:talk')); }
   const tp = performance.now(); draw();
   if (PROF) PROF.push([+view.u.toFixed(3), +(performance.now() - tp).toFixed(2)]);
   if (t < DUR) requestAnimationFrame(tick);
@@ -489,7 +500,7 @@ document.getElementById('go3d').addEventListener('click', start);
 const REWIND = 0.5;   // 倒帶花的時間 = 掉落長度 × REWIND
 function rewind() {
   if (playing || !done) return;
-  playing = true; body.classList.remove('landed');
+  playing = true; body.classList.remove('landed', 'talkon');
   const tStart = DUR;
   let s0 = null;
   function back(now) {
@@ -508,6 +519,22 @@ addEventListener('resize', () => { measure(); if (!playing) draw(); });
 // ---- 開場：等剪紙圖載好，先在背景把棋盤畫一次 (編譯 shader、量速度)，再顯示鑰匙孔 ----
 measure();
 await viewD.cutReady;
+guest = await createGuest(viewD.cutouts.items.h, tune.cutGlow);
+
+// ---- 其他系金牌：網頁那邊選中／取消 → 牌往上舉轉正 / 放回兔子手上；呼吸燈按鈕要知道牌在畫面哪裡 ----
+{
+  const anim = (ms, fn) => { const t0 = performance.now(); const f = (now) => { const k = Math.min(1, (now - t0) / ms); fn(k); draw(); if (k < 1) requestAnimationFrame(f); else dispatchEvent(new Event('entry:guestmoved')); }; requestAnimationFrame(f); };
+  window.__guestSel = (on) => { const a = guest.sel, b = on ? 1 : 0; if (a === b) return; anim(380, (k) => { guest.sel = a + (b - a) * (1 - (1 - k) ** 3); }); };
+  window.__guestRect = () => guest.rect(viewD.camera);   // 0–1 畫布座標 (畫布 = 舞台大小)
+  // 外發光呼吸 (1.8 秒一輪)：只在第一題、還沒選金牌時每 50ms 重畫一次 (20 fps 就夠順，比較省電)；其他時候關掉
+  let lit = false;
+  setInterval(() => {
+    const on = !playing && !document.hidden && body.classList.contains('landed') && !body.classList.contains('is-done')
+      && document.querySelector('.step.on')?.dataset.step === '1' && guest.sel === 0;
+    if (on) { guest.setGlow(0.12 + 0.38 * (0.5 - 0.5 * Math.cos(performance.now() / 1800 * Math.PI * 2))); /* 淡淡的就好 */ draw(); lit = true; }
+    else if (lit) { guest.setGlow(0); if (!playing) draw(); lit = false; }
+  }, 50);
+}
 await document.fonts?.ready;   // 標題字型載好才量得準
 fitCover();
 const fixed = q.has('step') ? DUR : q.has('t') ? Math.max(0, +q.get('t')) : q.has('u') ? null : undefined;   // ?step= (看表單) 直接停在定格
@@ -563,6 +590,10 @@ function placeKeyholeCue() {
   placeCameraA(0, 0); camera.updateMatrixWorld();
   const p = new THREE.Vector3(0, 0, RB / CT).project(camera);
   stage.style.setProperty('--khb', ((1 - p.y) / 2 * 100).toFixed(2) + '%');
+  // 鑰匙孔最深處 (樹尖 = 黑色小鑰匙孔，位在 apex) → 載入動畫的光暈飛到這裡
+  const a = new THREE.Vector3(0, P.H, 0).project(camera);
+  stage.style.setProperty('--khx', ((1 + a.x) / 2 * 100).toFixed(2) + '%');
+  stage.style.setProperty('--khy', ((1 - a.y) / 2 * 100).toFixed(2) + '%');
 }
 placeKeyholeCue();
 addEventListener('resize', () => requestAnimationFrame(() => { if (!playing && !done) { fitCover(); draw(); } placeKeyholeCue(); }));

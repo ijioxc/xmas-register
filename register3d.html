@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#9bb7ac">
+<meta name="theme-color" content="#0d1210">
 <title>愛理不理 報名</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,17 +35,50 @@
   #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* 載入動畫：像素白兔 (戴聖誕帽＋單片眼鏡) 原地跑，3D 準備好 (.ready) 就淡出 */
-  #loader { position: absolute; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 14px;
-    background: linear-gradient(135deg, var(--paper-a), var(--paper-b)); transition: opacity .4s, visibility 0s .4s; }
-  .ready #loader { opacity: 0; visibility: hidden; }
-  #loader canvas { width: 168px; height: 120px; image-rendering: pixelated; image-rendering: crisp-edges; }
-  #loader p { margin: 0; font: 700 13px/1 'Noto Sans TC', sans-serif; letter-spacing: .18em; color: var(--ink); opacity: .75; }
-  #loader p b { display: inline-block; width: 1.6em; text-align: left; font-weight: 700; }
+  /* 暗版：深色底＋兔子後面一圈鑰匙孔暖光。3D 好了 (.ready)：兔子往右跑掉 → 光暈縮小、飛到封面鑰匙孔深處 (--khx/--khy) → 黑幕淡開 */
+  #loader { position: absolute; inset: 0; z-index: 40; pointer-events: none; --ld-dark: #0d1210;
+    --ld-t1: .35s; --ld-t2: .65s; --ld-t3: .45s;       /* 兔子跑掉／光暈飛過去／黑幕淡開 */
+    transition: visibility 0s calc(var(--ld-t1) + var(--ld-t2) + var(--ld-t3)); }
+  #loader .ld-dark { position: absolute; inset: 0; background: var(--ld-dark);
+    transition: opacity var(--ld-t3) ease-out calc(var(--ld-t1) + var(--ld-t2) * .7); }
+  #loader .ld-halo { position: absolute; left: 50%; top: 47%; width: 420px; height: 420px; border-radius: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    background: radial-gradient(circle, rgba(255, 214, 150, .62) 0%, rgba(236, 140, 64, .42) 18%, rgba(170, 72, 30, .2) 40%, rgba(90, 36, 18, .07) 58%, transparent 71%);
+    animation: ld-breathe 2.4s ease-in-out infinite; }
+  @keyframes ld-breathe { 50% { opacity: .82; } }
+  #loader .ld-run { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
+    transition: transform var(--ld-t1) cubic-bezier(.5, 0, .9, .4), opacity var(--ld-t1); }
+  #loader canvas { width: 140px; height: 100px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #loader p { margin: 0; font: 700 13px/1 'Noto Sans TC', sans-serif; letter-spacing: .18em; color: var(--card); opacity: .85;
+    display: flex; align-items: center; transform: translateX(2.6em); }   /* 往右推一點：字＋後面的點整體置中 */
+  /* 6 個點一直往右跑 (跟兔子同方向)，右邊淡出 */
+  #loader p b { display: inline-block; width: 5.2em; height: 1em; margin-left: .2em;
+    background: radial-gradient(circle, var(--card) 0 1.6px, transparent 2.2px) 0 55% / .87em 100% repeat-x;
+    -webkit-mask: linear-gradient(90deg, #000 55%, transparent); mask: linear-gradient(90deg, #000 55%, transparent);
+    animation: ld-dots .51s linear infinite; }
+  @keyframes ld-dots { to { background-position-x: .87em; } }
+  .ready #loader { visibility: hidden; }
+  /* 兔子往右跑掉；字留在原地淡掉；光暈反方向往左甩，再繞回鑰匙孔深處 */
+  #loader .ld-pix { position: relative; }
+  #loader #ldg { position: absolute; inset: 0; }   /* 地面虛線：另一張畫布，留在原地 */
+  #loader #ldr { position: relative; transition: transform var(--ld-t1) cubic-bezier(.5, 0, .9, .4); }
+  #loader p, #loader #ldg { transition: opacity calc(var(--ld-t1) * .8); }
+  .ready #loader #ldr { transform: translateX(70vw); }
+  .ready #loader p, .ready #loader #ldg { opacity: 0; }
+  .ready #loader .ld-halo { animation: ld-fly calc(var(--ld-t1) + var(--ld-t2)) cubic-bezier(.45, 0, .3, 1) forwards; opacity: 0;
+    transition: opacity var(--ld-t3) ease-out calc(var(--ld-t1) + var(--ld-t2) * .8); }
+  @keyframes ld-fly {
+    0%   { left: 50%; top: 47%; transform: translate(-50%, -50%) scale(1); }
+    40%  { left: 18%; top: 50%; transform: translate(-50%, -50%) scale(.75); }
+    100% { left: var(--khx, 50%); top: var(--khy, 40%); transform: translate(-50%, -50%) scale(.2); }
+  }
+  .ready #loader .ld-dark { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { #loader p b { animation: none; } #loader .ld-halo { animation: none; } }
   /* 鑰匙孔畫面上的字（開始掉就淡出） */
   .over { position: absolute; inset: 0; pointer-events: none; padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
     padding-top: max(22px, env(safe-area-inset-top)); transition: opacity .35s; opacity: 0; }
-  .ready .over { opacity: 1; }
-  .falling .over { opacity: 0; }
+  .ready .over { opacity: 1; transition: opacity .5s ease-out 1s; }   /* 等黑幕淡開才出字 */
+  .falling .over { opacity: 0; transition: opacity .35s; }
   .frame { position: absolute; inset: 10px; border: 1.5px solid var(--ink); border-radius: 24px; opacity: .85; }
   /* 封面排法參考 IG Story 版 (homepage.html?f=story)：左上直排大日期、右上小字堆疊、下方標題＋資訊格 */
   .date { position: absolute; left: 30px; top: max(30px, calc(env(safe-area-inset-top) + 8px)); text-align: center;
@@ -74,16 +107,22 @@
   #go3d svg { width: 24px; height: 13px; fill: none; stroke: #fff8ec; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
     filter: drop-shadow(0 0 4px rgba(255, 214, 150, .95)) drop-shadow(0 0 12px rgba(255, 170, 70, .6)); animation: nudge 1.8s ease-in-out infinite; }
   #go3d svg + svg { margin-top: -3px; animation-delay: .18s; }
+  /* 其他系金牌的點擊範圍 (看不到)：跟金牌一樣大小、一樣歪，蓋在牌上；外發光在 3D 裡 (guest.js) */
+  #guestBtn { position: absolute; z-index: 3; display: none; pointer-events: auto; appearance: none; background: none; cursor: pointer;
+    border: 0; padding: 0; -webkit-tap-highlight-color: transparent; transform: translate(-50%, -50%) rotate(var(--ga, 0rad)); }
+  #guestBtn::after { content: ''; position: absolute; inset: -14px; }   /* 手指好點：可點範圍比牌大一圈 */
+  #guestBtn:focus-visible { outline: 2px solid #fff8ec; outline-offset: 4px; }
+  .landed:not(.is-done) #guestBtn.on { display: block; }
   @keyframes nudge { 0%, 100% { transform: translateY(4px); opacity: .2; } 50% { transform: translateY(-4px); opacity: 1; } }
 
   .grain { position: fixed; inset: 0; z-index: 90; pointer-events: none; mix-blend-mode: overlay; opacity: .22; width: 100%; height: 100%; }
 
   /* ───────── 定格後：畫面往上推，下方抽出一張牌（表單） ───────── */
   :root { --sheet: 54%; --shift: -22%; }
-  #c { transition: transform .9s cubic-bezier(.6, 0, .3, 1); }
-  .landed #c { transform: translateY(var(--shift)); }
-  .landed #stage { background: #070605; }
-  .is-done #c { transform: translateY(-34%); }
+  /* 棋盤往上推 --shift 已經算進 3D 鏡頭 (viewD lift)，畫布本身不動；完成頁再多推一點 */
+  .falling #stage { background: #070605; }
+  .landed #c { transition: transform .9s cubic-bezier(.6, 0, .3, 1); }   /* 落地後 --land 固定 = 1，只有進出完成頁會動 */
+  .is-done #c { transform: translateY(calc(-34% - var(--shift))); }
   .sheet { position: absolute; left: 8px; right: 8px; bottom: 0; height: var(--sheet); z-index: 5;
     display: flex; flex-direction: column; container-type: size; color: var(--ink);
     transform: translateY(105%); transition: transform .7s cubic-bezier(.2, .8, .2, 1.04), height .6s cubic-bezier(.4, 0, .2, 1), color .4s;
@@ -286,9 +325,9 @@
     .card3 { padding: 14px 22px 10px 28px; } .field input { padding: 8px 10px 6px; font-size: 18px; } .field .err { min-height: 8px; } .sum { margin-top: 2px; padding-top: 6px; } }   /* 矮手機：牌桌拉高，對話框往上提補回來 */
   .head .eyebrow, .head .bars { display: none; }
   .is-done .head .eyebrow { display: none; }
-  .talk-top.is-done #c { transform: translateY(var(--shift)); }   /* 背景場景不再往上推：兔子藏在票後面 */
+  .talk-top.is-done #c { transform: none; }   /* 背景場景不再往上推：兔子藏在票後面 */
   .is-done .talk { display: none; }
-  body:not(.landed) .talk { visibility: hidden; }   /* 倒帶回封面時尾巴不要留在畫面下緣 */
+  body:not(.landed):not(.talkon) .talk { visibility: hidden; }   /* 倒帶回封面時尾巴不要留在畫面下緣 */
   .talk-top { --shift: -14%; --sheet: 47%; }   /* 預設：對話框浮在上面 (?talk=bottom 關掉) */
   .talk-top .talk { position: absolute; left: 14px; margin: 0; z-index: 4; max-width: 78%; }
   .talk { position: relative; width: fit-content; max-width: var(--talk-w); min-width: 52%; margin: 6px 0 2px var(--talk-x);
@@ -347,11 +386,12 @@
   </g><path d="M14 14 l3 -3 3 3 -3 3z" fill="currentColor"/></symbol><symbol id="h" viewBox="0 0 32 30"><path d="M16 29C7 21 0 15.5 0 8.6 0 3.8 3.7 0 8.4 0c3.2 0 5.9 1.8 7.6 4.6C17.7 1.8 20.4 0 23.6 0 28.3 0 32 3.8 32 8.6 32 15.5 25 21 16 29z"/></symbol></svg>
 
 <div id="stage">
-  <div id="loader" aria-label="載入中"><canvas id="ldr" width="28" height="20"></canvas><p>要遲到了<b id="ldrDots"></b></p></div>
+  <div id="loader" aria-label="載入中"><div class="ld-dark"></div><div class="ld-halo"></div>
+    <div class="ld-run"><div class="ld-pix"><canvas id="ldg" width="28" height="20"></canvas><canvas id="ldr" width="28" height="20"></canvas></div><p>要遲到了<b></b></p></div></div>
   <script>
-    // 像素兔：28×20 小畫布逐格畫 (身體、頭、耳朵、聖誕帽、單片眼鏡、腿)，再補一圈深色外框，放大 6 倍 = 像素風
+    // 像素兔：28×20 小畫布逐格畫 (身體、頭、耳朵、聖誕帽、單片眼鏡、腿)，再補一圈深色外框，放大 5 倍 = 像素風
     (() => {
-      const cv = document.getElementById('ldr'), g = cv.getContext('2d'), Wd = 28, Hd = 20, N = 6;
+      const cv = document.getElementById('ldr'), g = cv.getContext('2d'), gg = document.getElementById('ldg').getContext('2d'), Wd = 28, Hd = 20, N = 6;
       const C = { W: '#f3efe4', S: '#d8d0bd', R: '#9e1b22', P: '#e6a3a0', Y: '#d9a441', K: '#151515' };
       const frames = [];
       for (let f = 0; f < N; f++) {
@@ -385,20 +425,27 @@
         for (const k of px.keys()) { const [x, y] = k.split(',').map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const kk = (x + dx) + ',' + (y + dy); if (!px.has(kk)) out.set(kk, 'K'); } }
         frames.push(out);
       }
-      let f = 0, dot = 0, ground = 0;
+      let f = 0, ground = 0, until = Infinity;
       const tick = () => {
-        if (document.body.classList.contains('ready')) return;
+        if (document.body.classList.contains('ready')) {   // 3D 好了：兔子繼續跑一下 (往右跑出畫面)，轉場結束才停
+          if (until === Infinity) {
+            until = performance.now() + 1600;
+            document.querySelector('meta[name=theme-color]').content = '#9bb7ac';
+          }
+          if (performance.now() > until) return;
+        }
         g.clearRect(0, 0, Wd, Hd);
-        g.fillStyle = C.K; for (let x = -ground; x < Wd; x += 4) g.fillRect(x, 18, 2, 1);   // 地面虛線往後跑
+        gg.clearRect(0, 0, Wd, Hd);
+        gg.fillStyle = 'rgba(243,239,228,.45)'; for (let x = -ground; x < Wd; x += 4) gg.fillRect(x, 18, 2, 1);   // 地面虛線往後跑 (暗底用米白)
         for (const [k, c] of frames[f]) { const [x, y] = k.split(',').map(Number); if (y < 18) { g.fillStyle = C[c]; g.fillRect(x, y, 1, 1); } }
-        f = (f + 1) % N; ground = (ground + 1) % 4;
-        if (f === 0) document.getElementById('ldrDots').textContent = '.'.repeat(dot = (dot + 1) % 4);
+        f = (f + 1) % N; if (until === Infinity) ground = (ground + 1) % 4;   // 兔子跑掉時地面停住
         setTimeout(tick, 85);
       };
       tick();
     })();
   </script>
   <canvas id="c"></canvas>
+  <button type="button" id="guestBtn" aria-label="其他系（外系朋友）"></button>
   <div class="over">
     <div class="frame"></div>
     <div class="date"><span class="one">1</span>2<svg class="heart"><use href="#h"/></svg>22<small>TUE<br>星期二</small></div>
@@ -448,8 +495,8 @@
           <h3><em>02</em>系學會會員？</h3>
           <p class="hint">決定報名費</p>
           <div class="member">
-            <label class="opt pc" style="--rot:-4deg;--i:0"><input type="radio" name="member" value="系會員" data-fee="150"><span class="s tl r">♥</span><span class="lb">是，系會員</span><b>150<small>元</small></b><span class="s br r">♥</span></label>
-            <label class="opt pc" style="--rot:4deg;--i:1"><input type="radio" name="member" value="非系會員" data-fee="250"><span class="s tl">♠</span><span class="lb">不是</span><b>250<small>元</small></b><span class="s br">♠</span></label>
+            <label class="opt pc" style="--rot:-4deg;--i:0"><input type="radio" name="member" value="系會員" data-fee="150"><span class="s tl r">♥</span><span class="lb">系會員</span><b>150<small>元</small></b><span class="s br r">♥</span></label>
+            <label class="opt pc" style="--rot:4deg;--i:1"><input type="radio" name="member" value="非系會員" data-fee="250"><span class="s tl">♠</span><span class="lb">非會員</span><b>250<small>元</small></b><span class="s br">♠</span></label>
           </div>
         </section>
 
@@ -555,6 +602,7 @@
 
   const DEPTS = ['國企系', '車輛系', '財稅系', '土木系', '觀光系', '機械系', '能源系', '金資系', '資工系', '電子系'];
   const SUITS = [['♠', ''], ['♥', 'r'], ['♣', ''], ['♦', 'r']];
+  const GUEST = '其他系';   // 隱藏金牌：外系朋友，一律非系會員 250，跳過會員那題
   const $ = (s) => document.querySelector(s);
   const form = $('#form'), body = document.body;
 
@@ -563,10 +611,13 @@
   $('#depts').innerHTML = DEPTS.map((d, i) => {
     const [s, c] = SUITS[i % 4], row = Math.floor(i / 5), j = (i % 5) - 2, [jr, dx, dy] = JIT[i];
     return `<label class="dept" style="--i:${i};--row:${row};--j:${j};--jr:${jr}deg;--dx:${dx}px;--dy:${dy}px"><input type="radio" name="dept" value="${d}"><span class="s tl ${c}">${s}</span><span class="nm">${d}</span><span class="s br ${c}">${s}</span></label>`;
-  }).join('');
+  }).join('') +
+    // 隱藏金牌「其他系」在 3D 場景裡 (聖誕樹右後方，src/register3d/guest.js)；這裡只放它的選項
+    `<input type="radio" name="dept" value="${GUEST}" id="guestIn" hidden>`;
 
   const val = () => {
     const member = form.querySelector('[name=member]:checked');
+    if (form.dept.value === GUEST) return { dept: GUEST, member: '非系會員', fee: '250', sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
     return { dept: form.dept.value, member: member?.value || '', fee: member?.dataset.fee || '',
       sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
   };
@@ -589,16 +640,18 @@
     if (n !== 1 || dir < 0) form.classList.remove('first');
     $('#send').innerHTML = '送出 <svg><use href="#h"/></svg>';
     $('.body').scrollTop = 0;
-    say(n);
+    say(n, n === 3 && form.dept.value === GUEST ? SAY.guest : SAY[n]);
     refresh();
+    window.placeGuestBtn?.();
   }
 
   // ───────── 傳令兔對話框 ─────────
   // 每題兔子說的話：[大字, 小字]
   const SAY = {
-    1: ['你是哪一系的？', '抽一張牌給我。'],
+    1: ['選擇你的科系！', '其他科系請選擇金色卡牌。'],
     2: ['系學會會員嗎？', '這決定你的報名費。'],
-    3: ['報上學號和姓名！', '繳費時要對名單。'],
+    3: ['報上名來！', '繳費時要對名單。'],
+    guest: ['不請自來也歡迎！', '其他系 250 元，報上學號和姓名。'],
   };
   const talk = $('#talk');
   const chars = (s, k0) => [...s].map((c, i) => `<span class="ch" style="--k:${k0 + i}">${c}</span>`).join('');
@@ -624,9 +677,9 @@
   // 尾巴：從對話框上緣伸出去，指向兔子嘴巴，停在兔子腳下一點 (不蓋到兔子)
   function drawTalk() {
     // 鏡頭要定格後才準；全部用「動畫結束後」的版面算 (offset 不吃 transform)，滑進來的途中也不會跑掉
-    if (!window.__herald || !body.classList.contains('landed') || body.classList.contains('is-done')) return;
+    if (!window.__herald || !body.matches('.landed, .talkon') || body.classList.contains('is-done')) return;
     const a = window.__herald(), sr = $('#stage').getBoundingClientRect();
-    const shift = parseFloat(getComputedStyle(body).getPropertyValue('--shift')) / 100 || 0;
+    const shift = 0;   // 上推已算進 3D 鏡頭，兔子投影座標就是畫面上的位置
     const cr = { left: sr.left, top: sr.top + shift * sr.height, width: sr.width, height: sr.height };   // 畫布往上推之後的位置
     const w = talk.offsetWidth, h = talk.offsetHeight;
     const R = 16, half = TALK.half;
@@ -673,7 +726,9 @@
     talk.style.setProperty('--ox', tx + 'px'); talk.style.setProperty('--oy', (TOP ? h - ty : ty) + 'px');
   }
   addEventListener('entry:herald', () => requestAnimationFrame(drawTalk));
-  addEventListener('entry:landed', () => { drawTalk(); talk.style.setProperty('--base', '.55s'); talk.classList.remove('go'); void talk.offsetWidth; talk.classList.add('go'); });
+  // 傳令兔快站好 (entry:talk) 就跳出來；落地時只重算尾巴位置
+  addEventListener('entry:talk', () => { drawTalk(); talk.style.setProperty('--base', '0s'); talk.classList.remove('go'); void talk.offsetWidth; talk.classList.add('go'); });
+  addEventListener('entry:landed', () => { drawTalk(); if (!talk.classList.contains('go')) talk.classList.add('go'); });
   addEventListener('resize', () => requestAnimationFrame(drawTalk));
   function refresh() {
     const v = val();
@@ -689,19 +744,57 @@
   $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!$('#send').disabled) form.requestSubmit(); } });
   $('#name').addEventListener('input', () => { $('#nameErr').textContent = ''; });
   // 選完牌自動下一題 (等選中的牌浮起來 0.55 秒)；已經選過的牌再點一次也會前進
-  let auto = 0;
+  // 已經選中的牌再點一次 = 取消 (按下去之前記住它原本有沒有選)
+  let auto = 0, wasOn = null;
+  form.addEventListener('pointerdown', (e) => { const l = e.target.closest?.('.dept, .opt'); wasOn = l ? l.querySelector('input').checked && l : null; });
   form.addEventListener('click', (e) => {
     const r = e.target;
     if (!r.matches?.('input[type=radio]') || step > 2) return;
     const at = step; clearTimeout(auto);
-    auto = setTimeout(() => { if (step === at) show(step + 1); }, 550);
+    if (wasOn && wasOn.contains(r)) { r.checked = false; wasOn = null; refresh(); window.__guestSel?.(false); return; }
+    wasOn = null;
+    window.__guestSel?.(false);   // 選了一般的牌 → 金牌放回去
+    auto = setTimeout(() => { if (step === at) show(at + 1); }, 550);
+  });
+  // 點牌以外的地方 = 取消這一題的選取 (第一、二題)
+  $('#stage').addEventListener('click', (e) => {
+    if (!body.classList.contains('landed') || body.classList.contains('is-done') || step > 2) return;
+    if (e.target.closest('.dept, .opt, #guestBtn, input, button, a, textarea, select')) return;
+    const on = form.querySelector(step === 1 ? '[name=dept]:checked' : '[name=member]:checked');
+    if (!on) return;
+    clearTimeout(auto); on.checked = false; refresh(); placeGuestBtn(); window.__guestSel?.(false);
+  });
+  // 點到 3D 場景裡的其他系金牌：選它 (浮起來) → 直接跳到學號姓名；已經選了再點 = 取消
+  // 呼吸燈按鈕：貼在傳令兔手上的金牌外面；第一題、還沒選金牌時才亮
+  const gBtn = $('#guestBtn');
+  function placeGuestBtn() {
+    const r = window.__guestRect?.(), on = !!r && step === 1 && !$('#guestIn').checked;
+    gBtn.classList.toggle('on', on);
+    if (!r) return;
+    const sr = $('#stage').getBoundingClientRect(), px = (p) => [p.x * sr.width, p.y * sr.height];
+    const [a, b, c] = r.map(px);   // 左下、右下、左上
+    const w = Math.hypot(b[0] - a[0], b[1] - a[1]), h = Math.hypot(c[0] - a[0], c[1] - a[1]);
+    const cx = (b[0] + c[0]) / 2, cy = (b[1] + c[1]) / 2;
+    Object.assign(gBtn.style, { left: cx + 'px', top: cy + 'px', width: w + 'px', height: h + 'px' });
+    gBtn.style.setProperty('--ga', Math.atan2(b[1] - a[1], b[0] - a[0]) + 'rad');
+  }
+  window.placeGuestBtn = placeGuestBtn;
+  gBtn.addEventListener('click', () => dispatchEvent(new Event('entry:guest')));
+  for (const ev of ['entry:landed', 'entry:talk', 'entry:guestmoved', 'resize']) addEventListener(ev, () => requestAnimationFrame(placeGuestBtn));
+  addEventListener('entry:guest', () => {
+    if (step !== 1) return;
+    clearTimeout(auto);
+    const g = $('#guestIn');
+    if (g.checked) { g.checked = false; refresh(); window.__guestSel?.(false); return; }
+    g.checked = true; refresh(); window.__guestSel?.(true);
+    auto = setTimeout(() => { if (step === 1) show(3); }, 700);
   });
 
   // 往下拉 (手指往下滑／滾輪往上) = 回上一題；第一題再拉 = 倒帶回鑰匙孔封面
   function goBack() {
     if (!body.classList.contains('landed') || body.classList.contains('is-done')) return;
     clearTimeout(auto);
-    if (step > 1) show(step - 1, -1);
+    if (step > 1) show(step === 3 && form.dept.value === GUEST ? 1 : step - 1, -1);
     else dispatchEvent(new Event('entry:rewind'));
   }
   let armed = true, quiet = 0;   // 觸控板一次滑動會送很多個 wheel：停 250ms 才算下一次
