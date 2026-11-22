@@ -101,19 +101,37 @@
   .info dd { margin: 0; }
 
   /* 往上滑提示：不寫字，白色箭頭放在鑰匙孔裡、靠近下緣，像呼吸燈一樣亮暗＋往上跳 (--khb = 3D 算出的鑰匙孔底) */
-  #go3d { position: absolute; left: 50%; top: calc(var(--khb, 64%) - 58px); transform: translateX(-50%);
+  #go3d { position: absolute; left: 50%; top: calc(var(--khb, 64%) - 69px); transform: translateX(-50%);
     pointer-events: auto; appearance: none; border: 0; background: none; cursor: pointer; padding: 8px 18px;
     display: flex; flex-direction: column; align-items: center; -webkit-tap-highlight-color: transparent; }
-  #go3d svg { width: 24px; height: 13px; fill: none; stroke: #fff8ec; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
-    filter: drop-shadow(0 0 4px rgba(255, 214, 150, .95)) drop-shadow(0 0 12px rgba(255, 170, 70, .6)); animation: nudge 1.8s ease-in-out infinite; }
-  #go3d svg + svg { margin-top: -3px; animation-delay: .18s; }
+  /* 三層箭頭＝由近到遠：下面最大最尖 (近)，往上越小、越圓、越淡 (遠、往鑰匙孔裡)；亮光由下往上流 */
+  #go3d svg { fill: none; stroke: #fff8ec; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    filter: drop-shadow(0 0 4px rgba(255, 214, 150, .95)) drop-shadow(0 0 12px rgba(255, 170, 70, .6));
+    animation: nudge 1.8s ease-in-out infinite; --d: 4px; --o: 1; }
+  /* 三層同一個形狀 (圓頭箭頭)、等比例縮小：由下往上 大→小、粗→細、亮→淡、跳得越小 = 越來越遠 */
+  #go3d .a1 { width: 46px; height: 19.7px; stroke-width: 2.4; animation-delay: 0s; }
+  #go3d .a2 { width: 32px; height: 13.7px; margin-bottom: -4px; stroke-width: 2; animation-delay: .2s; --d: 2.6px; --o: .85; }
+  #go3d .a3 { width: 22px; height: 9.4px; margin-bottom: -2px; stroke-width: 1.6; animation-delay: .4s; --d: 1.6px; --o: .7; }
   /* 其他系金牌的點擊範圍 (看不到)：跟金牌一樣大小、一樣歪，蓋在牌上；外發光在 3D 裡 (guest.js) */
   #guestBtn { position: absolute; z-index: 3; display: none; pointer-events: auto; appearance: none; background: none; cursor: pointer;
     border: 0; padding: 0; -webkit-tap-highlight-color: transparent; transform: translate(-50%, -50%) rotate(var(--ga, 0rad)); }
   #guestBtn::after { content: ''; position: absolute; inset: -14px; }   /* 手指好點：可點範圍比牌大一圈 */
   #guestBtn:focus-visible { outline: 2px solid #fff8ec; outline-offset: 4px; }
   .landed:not(.is-done) #guestBtn.on { display: block; }
-  @keyframes nudge { 0%, 100% { transform: translateY(4px); opacity: .2; } 50% { transform: translateY(-4px); opacity: 1; } }
+  /* 手繪小星星：在最上面箭頭的上方輕輕閃；往上滑時往鑰匙孔最深處 (--khx/--khy) 掉進去，越掉越小、轉半圈、消失 */
+  #star { position: absolute; z-index: 2; left: 50%; top: calc(var(--khb, 64%) - 84px); width: 20px; height: 20px;
+    margin-left: -10px; pointer-events: none; overflow: visible; opacity: 0;
+    fill: none; stroke: #fff8ec; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round;
+    filter: drop-shadow(0 0 3px rgba(255, 214, 150, .95)) drop-shadow(0 0 10px rgba(255, 170, 70, .6)); }
+  #star .re { stroke-width: .7; opacity: .55; }
+  .ready #star { opacity: 1; transition: opacity .5s ease-out 1s; animation: twinkle 2.4s ease-in-out infinite; }
+  .falling #star { transition: none; animation: starFall .9s cubic-bezier(.5, 0, .85, .4) forwards; }
+  @keyframes twinkle { 0%, 100% { transform: rotate(-8deg) scale(.9); } 50% { transform: rotate(8deg) scale(1.08); } }
+  @keyframes starFall {
+    0%   { top: calc(var(--khb, 64%) - 84px); left: 50%; transform: rotate(0) scale(1); opacity: 1; }
+    70%  { opacity: 1; }
+    100% { top: calc(var(--khy, 40%) - 10px); left: var(--khx, 50%); transform: rotate(200deg) scale(.15); opacity: 0; } }
+  @keyframes nudge { 0%, 100% { transform: translateY(var(--d, 4px)); opacity: .2; } 50% { transform: translateY(calc(-1 * var(--d, 4px))); opacity: var(--o, 1); } }
 
   .grain { position: fixed; inset: 0; z-index: 90; pointer-events: none; mix-blend-mode: overlay; opacity: .22; width: 100%; height: 100%; }
 
@@ -210,6 +228,11 @@
   .opt b { font-family: Inter; font-size: min(13cqw, 11cqh); line-height: .9; letter-spacing: -.04em; }
   .opt b small { display: block; font-size: 13px; letter-spacing: .1em; margin-top: 6px; font-family: 'Noto Sans TC'; }
   .member:has(input:checked) .opt { filter: brightness(.72); }
+  /* 飲食：三張比較窄的牌，大字 葷／素／忌 */
+  .diet { gap: 10px; }
+  .diet .opt { width: min(28cqw, 30cqh); gap: 8px; }
+  .diet .opt b { font-family: 'Noto Sans TC'; font-weight: 900; font-size: min(12cqw, 10cqh); letter-spacing: 0; line-height: 1; }
+  .diet .opt .lb { font-size: 13px; letter-spacing: .04em; }
   .member .opt:has(input:checked) { background: var(--heart); color: var(--card); filter: none;
     transform: translateY(-16px) rotate(0deg) rotateX(0deg) translateZ(40px) scale(1.06);
     box-shadow: 0 1px 0 #7d151b, 0 2px 0 #6a1015, 0 3px 0 #560c10, 0 18px 22px rgba(0, 0, 0, .55), 0 34px 40px rgba(0, 0, 0, .3); }
@@ -217,12 +240,20 @@
   .opt:has(input:checked) .s { color: var(--card); }
 
   /* 學號姓名：寫在一張牌上 */
-  .step[data-step="3"] { perspective: 1000px; }
+  .step[data-step="4"] { perspective: 1000px; }
   .card3 { padding: 18px 26px 16px; transform: rotate(var(--rot, 0deg)) rotateX(4deg); }
   .card3 .s.tl { left: 10px; top: 9px; font-size: 13px; } .card3 .s.br { right: 10px; bottom: 9px; font-size: 13px; }
 
   /* 學號、姓名 */
   .field + .field { margin-top: 4px; }
+  .field[hidden] { display: none; }
+  /* 多一格忌口：三格擠一張牌 → 全部收緊 */
+  .card3:has(#noteF:not([hidden])) { padding-top: 12px; padding-bottom: 10px; }
+  .card3:has(#noteF:not([hidden])) .field label { margin-bottom: 2px; }
+  .card3:has(#noteF:not([hidden])) .field input { padding: 7px 10px 5px; font-size: 17px; }
+  .card3:has(#noteF:not([hidden])) .field .err { min-height: 4px; margin-top: 2px; }
+  .card3:has(#noteF:not([hidden])) .card-foot { margin-top: 2px; padding-top: 7px; }
+  .field label small { font-weight: 500; opacity: .6; letter-spacing: .02em; }
   .field label { display: block; font-size: 13px; font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
   .field input { width: 100%; border: 0; border-bottom: 2px solid var(--ink); background: rgba(17,17,17,.05); color: var(--ink);
     padding: 11px 10px 9px; font: inherit; font-size: 20px; font-weight: 700; letter-spacing: .04em; border-radius: 6px 6px 0 0; outline: none; }
@@ -296,7 +327,12 @@
   /* 背面：上段印章＋繳費、下段票根 */
   .back .tk-main { align-items: center; text-align: center; justify-content: space-between; }
   .back .tk-hd { width: 100%; justify-content: center; gap: 3cqw; }
-  .tk-stamp { width: 64cqw; color: var(--heart); margin: -2cqw 0; }
+  .tk-stamp { width: 44cqw; color: var(--heart); margin: -1cqw 0 -2cqw; }
+  /* 背面：服裝指引 */
+  .tk-dress { width: 100%; padding: 0 6cqw; }
+  .tk-dress .k { margin-bottom: 1.4cqw; color: #1f3d2b; opacity: 1; }
+  .tk-dress p { margin: 0; font-size: 3.4cqw; font-weight: 700; line-height: 1.55; letter-spacing: .06em; }
+  .tk-dress p + p { font-weight: 500; font-size: 3cqw; opacity: .75; margin-top: .6cqw; }
   .tk-stamp .seal { mix-blend-mode: multiply; }
   /* 背面：金色細框＋四角捲草 (典雅歐風)，墨綠月桂圍住印章 */
   .back .tk-main { position: relative; }
@@ -306,8 +342,8 @@
   .orn.bl { left: 2.4cqw; bottom: .6cqw; transform: scaleY(-1); } .orn.br { right: 2.4cqw; bottom: .6cqw; transform: scale(-1); }
   .back .tk-hd { border-bottom-color: #b08a3e; margin: 0 9cqw; width: auto !important; align-self: stretch; }
   .back .tk-stub .tk-thx { color: #1f3d2b; }
-  .tk-pay { color: var(--heart); font-weight: 700; font-size: 4.6cqw; letter-spacing: .1em; line-height: 1.7; }
-  .tk-pay b { font-family: Inter; font-size: 7.4cqw; letter-spacing: .02em; }
+  .tk-pay { color: var(--heart); font-weight: 700; font-size: 4.2cqw; letter-spacing: .1em; line-height: 1.6; }
+  .tk-pay b { font-family: Inter; font-size: 6.4cqw; letter-spacing: .02em; }
   .tk-pay small { display: block; font-size: 3.2cqw; color: var(--ink); opacity: .7; letter-spacing: .08em; }
   .back .tk-stub { grid-template-columns: 1fr; text-align: center; }
   .tk-thx { font-family: Inter; color: var(--heart); font-size: 3.2cqw; font-weight: 700; letter-spacing: .3em; line-height: 1.9; }
@@ -446,6 +482,15 @@
   </script>
   <canvas id="c"></canvas>
   <button type="button" id="guestBtn" aria-label="其他系（外系朋友）"></button>
+  <svg id="star" viewBox="0 0 20 20" aria-hidden="true">
+    <defs><filter id="rough" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="1.1"/></filter></defs>
+    <g filter="url(#rough)">
+      <!-- 一筆畫星星：筆不離紙，線會交叉，收尾多畫出去一點 -->
+      <path d="M5.2 17.9Q7.1 9.7 10.1 1.8Q12.6 9.6 15.3 17.4Q8.6 13.1 1.6 8.2Q10 7.2 18.5 7.7Q11.6 12.4 4.1 18.6"/>
+      <!-- 第二筆淡淡描過，像鉛筆重描 -->
+      <path class="re" d="M5.9 16.9Q7.9 9.4 10.4 2.7Q12.3 9.9 14.6 16.8M2.4 8.6Q10.2 7.8 17.6 8.3"/>
+    </g>
+  </svg>
   <div class="over">
     <div class="frame"></div>
     <div class="date"><span class="one">1</span>2<svg class="heart"><use href="#h"/></svg>22<small>TUE<br>星期二</small></div>
@@ -454,7 +499,7 @@
       <div class="en"><b>Christmas<br>in Wonderland</b></div>
       <div>聖誕晚會<br>2026</div>
     </div>
-    <button id="go3d" type="button" aria-label="往上滑開始"><svg viewBox="0 0 22 12"><path d="M2 10 11 2l9 8"/></svg><svg viewBox="0 0 22 12"><path d="M2 10 11 2l9 8"/></svg></button>
+    <button id="go3d" type="button" aria-label="往上滑開始"><svg class="a3" viewBox="0 0 28 12"><path d="M2 10 11.6 3.4Q14 1.8 16.4 3.4L26 10"/></svg><svg class="a2" viewBox="0 0 28 12"><path d="M2 10 11.6 3.4Q14 1.8 16.4 3.4L26 10"/></svg><svg class="a1" viewBox="0 0 28 12"><path d="M2 10 11.6 3.4Q14 1.8 16.4 3.4L26 10"/></svg></button>
     <div class="bottom">
       <h1><span>愛理不理</span><span>聖誕有你</span></h1>
       <dl class="info">
@@ -473,7 +518,7 @@
     <div class="ix r">♠</div>
     <div class="head">
       <div class="eyebrow" id="eyebrow">報名 ENTRY</div>
-      <div class="bars"><i class="on"></i><i></i><i></i></div>
+      <div class="bars"><i class="on"></i><i></i><i></i><i></i></div>
       <!-- 傳令兔的對話框：尾巴由 JS 算，指到棋盤上的兔子 -->
       <div class="talk" id="talk" aria-live="polite">
         <svg class="talk-bg" id="talkBg" aria-hidden="true"></svg>
@@ -501,7 +546,17 @@
         </section>
 
         <section class="step" data-step="3">
-          <h3><em>03</em>你是誰</h3>
+          <h3><em>03</em>飲食</h3>
+          <p class="hint">有沒有忌口</p>
+          <div class="member diet">
+            <label class="opt pc" style="--rot:-5deg;--i:0"><input type="radio" name="diet" value="葷食"><span class="s tl">♣</span><b>葷</b><span class="lb">什麼都吃</span><span class="s br">♣</span></label>
+            <label class="opt pc" style="--rot:1deg;--i:1"><input type="radio" name="diet" value="素食"><span class="s tl r">♦</span><b>素</b><span class="lb">素食</span><span class="s br r">♦</span></label>
+            <label class="opt pc" style="--rot:5deg;--i:2"><input type="radio" name="diet" value="有忌口"><span class="s tl">♠</span><b>忌</b><span class="lb">有忌口</span><span class="s br">♠</span></label>
+          </div>
+        </section>
+
+        <section class="step" data-step="4">
+          <h3><em>04</em>你是誰</h3>
           <p class="hint">繳費時對名單用</p>
           <div class="card3 pc" style="--rot:-1.5deg">
           <span class="s tl">♣</span>
@@ -514,6 +569,12 @@
             <label for="name">姓名</label>
             <input id="name" name="name" autocomplete="name" placeholder="王小明" maxlength="20" enterkeyhint="send">
             <div class="err" id="nameErr"></div>
+          </div>
+          <!-- 選「素食」或「有忌口」才出現 -->
+          <div class="field" id="noteF" hidden>
+            <label for="dietNote" id="noteLb">忌口</label>
+            <input id="dietNote" name="dietNote" autocomplete="off" placeholder="例：不吃牛、海鮮過敏" maxlength="40" enterkeyhint="send">
+            <div class="err" id="noteErr"></div>
           </div>
           <div class="msg" id="msg" role="alert"></div>
           <div class="card-foot">
@@ -562,6 +623,7 @@
                     <text x="130" y="168" text-anchor="middle" font-family="Inter" font-weight="700" font-size="15" letter-spacing="1" fill="currentColor">12·22</text>
                   </g>
                 </svg>
+                <div class="tk-dress"><span class="k">DRESS CODE 服裝</span><p id="dress1">聖誕 × 仙境：穿上紅、綠或黑白格</p><p id="dress2">兔耳、領結、禮帽、撲克牌配件都歡迎</p></div>
                 <div class="tk-pay">請於 <b>12.15</b>（二）前<br>向系學會繳 <b id="tFee2">150</b> 元<small>名單上打勾，才算報名完成</small></div>
               </div>
               <div class="tk-stub">
@@ -570,7 +632,7 @@
             </div>
           </div>
         </div>
-        <p class="flip-hint">↻ 點票翻面・看繳費方式</p>
+        <p class="flip-hint">↻ 點票翻面・看繳費與服裝</p>
         <button class="again" id="again" type="button">幫另一位朋友報名</button>
       </div>
     </div>
@@ -617,15 +679,16 @@
 
   const val = () => {
     const member = form.querySelector('[name=member]:checked');
-    if (form.dept.value === GUEST) return { dept: GUEST, member: '非系會員', fee: '250', sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
-    return { dept: form.dept.value, member: member?.value || '', fee: member?.dataset.fee || '',
-      sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
+    const diet = form.querySelector('[name=diet]:checked')?.value || '', note = diet && diet !== '葷食' ? $('#dietNote').value.trim() : '';
+    const base = { diet, note, sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
+    if (form.dept.value === GUEST) return { dept: GUEST, member: '非系會員', fee: '250', ...base };
+    return { dept: form.dept.value, member: member?.value || '', fee: member?.dataset.fee || '', ...base };
   };
   const SID_OK = /^[A-Z0-9]{8,12}$/;
 
-  // 一次一題：1 系所 → 2 會員 → 3 學號姓名
+  // 一次一題：1 系所 → 2 會員 → 3 飲食 → 4 學號姓名 (其他系跳過 2)
   let step = 1;
-  const SUIT_OF = ['♠', '♥', '♣'];
+  const SUIT_OF = ['♠', '♥', '♦', '♣'];
   function show(n, dir = 1) {
     step = n;
     document.querySelectorAll('.step').forEach((el) => {
@@ -634,13 +697,14 @@
     });
     document.querySelectorAll('.bars i').forEach((b, i) => b.classList.toggle('on', i < n));
     $('.ix.r').textContent = SUIT_OF[n - 1];
-    $('.ix.r').style.color = n === 2 ? 'var(--heart)' : '';
+    $('.ix.r').style.color = n === 2 || n === 3 ? 'var(--heart)' : '';
     $('#pullTx').textContent = n === 1 ? '下拉回到封面' : '下拉回上一題';
     form.classList.add('bare');   // 全程沒有外框：題目都是浮在棋盤上的牌
     if (n !== 1 || dir < 0) form.classList.remove('first');
     $('#send').innerHTML = '送出 <svg><use href="#h"/></svg>';
     $('.body').scrollTop = 0;
     say(n, n === 3 && form.dept.value === GUEST ? SAY.guest : SAY[n]);
+    if (n === 4) noteField();
     refresh();
     window.placeGuestBtn?.();
   }
@@ -650,15 +714,16 @@
   const SAY = {
     1: ['選擇你的科系！', '其他科系請選擇金色卡牌。'],
     2: ['系學會會員嗎？', '這決定你的報名費。'],
-    3: ['報上名來！', '繳費時要對名單。'],
-    guest: ['不請自來也歡迎！', '其他系 250 元，報上學號和姓名。'],
+    3: ['有沒有忌口？', '晚會有餐點，幫你備對的那份。'],
+    4: ['報上名來！', '繳費時要對名單。'],
+    guest: ['不請自來也歡迎！', '其他系 250 元。有沒有忌口？'],
   };
   const talk = $('#talk');
   const chars = (s, k0) => [...s].map((c, i) => `<span class="ch" style="--k:${k0 + i}">${c}</span>`).join('');
   let talked = false;
   function say(n, lines = SAY[n]) {
     const [q, s] = lines;
-    $('#talkNo').innerHTML = `<span class="${n === 2 ? 'r' : ''}">${SUIT_OF[n - 1]}</span>0${n} / 03`;
+    $('#talkNo').innerHTML = `<span class="${n === 2 || n === 3 ? 'r' : ''}">${SUIT_OF[n - 1]}</span>0${n} / 04`;
     $('#talkQ').innerHTML = chars(q, 0);
     $('#talkS').innerHTML = s ? chars(s, q.length + 3) : '';
     talk.setAttribute('aria-label', q + (s || ''));
@@ -732,24 +797,33 @@
   addEventListener('resize', () => requestAnimationFrame(drawTalk));
   function refresh() {
     const v = val();
-    const ok = step === 1 ? !!v.dept : step === 2 ? !!v.member : !!(v.sid && v.name);
-    $('#send').disabled = !(v.sid && v.name);
-    $('#sum').innerHTML = `${v.dept}${v.member ? '・' + v.member : ''}${v.fee ? `<br>報名費 <b>${v.fee}</b> 元` : ''}`;
+    $('#send').disabled = !(v.sid && v.name && (v.diet !== '有忌口' || v.note));
+    $('#sum').innerHTML = `${v.dept}${v.member ? '・' + v.member : ''}${v.diet ? '・' + v.diet : ''}${v.fee ? `<br>報名費 <b>${v.fee}</b> 元` : ''}`;
   }
   form.addEventListener('input', refresh);
   form.addEventListener('change', refresh);
   $('#sid').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/\s/g, ''); $('#sidErr').textContent = ''; });
   $('#sid').addEventListener('blur', (e) => { $('#sidErr').textContent = e.target.value && !SID_OK.test(e.target.value) ? '學號格式不對，請再檢查' : ''; });
   $('#sid').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#name').focus(); } });
-  $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!$('#send').disabled) form.requestSubmit(); } });
+  $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!$('#noteF').hidden) $('#dietNote').focus(); else if (!$('#send').disabled) form.requestSubmit(); } });
+  $('#dietNote').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!$('#send').disabled) form.requestSubmit(); } });
   $('#name').addEventListener('input', () => { $('#nameErr').textContent = ''; });
+  $('#dietNote').addEventListener('input', () => { $('#noteErr').textContent = ''; });
+  // 第 4 題：選素食 → 多一格「素食種類 (選填)」；選有忌口 → 多一格「忌口」(必填)
+  function noteField() {
+    const d = form.querySelector('[name=diet]:checked')?.value;
+    $('#noteF').hidden = !d || d === '葷食';
+    $('#noteLb').innerHTML = d === '素食' ? '素食種類 <small>（選填）</small>' : '忌口';
+    $('#dietNote').placeholder = d === '素食' ? '例：蛋奶素、全素' : '例：不吃牛、海鮮過敏';
+    $('#noteErr').textContent = '';
+  }
   // 選完牌自動下一題 (等選中的牌浮起來 0.55 秒)；已經選過的牌再點一次也會前進
   // 已經選中的牌再點一次 = 取消 (按下去之前記住它原本有沒有選)
   let auto = 0, wasOn = null;
   form.addEventListener('pointerdown', (e) => { const l = e.target.closest?.('.dept, .opt'); wasOn = l ? l.querySelector('input').checked && l : null; });
   form.addEventListener('click', (e) => {
     const r = e.target;
-    if (!r.matches?.('input[type=radio]') || step > 2) return;
+    if (!r.matches?.('input[type=radio]') || step > 3) return;
     const at = step; clearTimeout(auto);
     if (wasOn && wasOn.contains(r)) { r.checked = false; wasOn = null; refresh(); window.__guestSel?.(false); return; }
     wasOn = null;
@@ -758,9 +832,9 @@
   });
   // 點牌以外的地方 = 取消這一題的選取 (第一、二題)
   $('#stage').addEventListener('click', (e) => {
-    if (!body.classList.contains('landed') || body.classList.contains('is-done') || step > 2) return;
+    if (!body.classList.contains('landed') || body.classList.contains('is-done') || step > 3) return;
     if (e.target.closest('.dept, .opt, #guestBtn, input, button, a, textarea, select')) return;
-    const on = form.querySelector(step === 1 ? '[name=dept]:checked' : '[name=member]:checked');
+    const on = form.querySelector(['', '[name=dept]:checked', '[name=member]:checked', '[name=diet]:checked'][step]);
     if (!on) return;
     clearTimeout(auto); on.checked = false; refresh(); placeGuestBtn(); window.__guestSel?.(false);
   });
@@ -932,16 +1006,18 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (step !== 3) return;
+    if (step !== 4) return;
     const v = val();
     if (!SID_OK.test(v.sid)) { $('#sidErr').textContent = '學號格式不對，請再檢查'; $('#sid').focus(); return; }
     if (!v.name) { $('#nameErr').textContent = '請填姓名'; $('#name').focus(); return; }
+    if (v.diet === '有忌口' && !v.note) { $('#noteErr').textContent = '請寫一下忌口什麼'; $('#dietNote').focus(); return; }
     $('#msg').textContent = '';
     $('#send').disabled = true; $('#send').textContent = '送出中…';
     let no = Math.floor(Math.random() * 200) + 1, shown = v, again = false;
     if (SUBMIT_URL) {
       // Apps Script v5 回傳 { ok, no, dept, member, fee, name, sid, again? } 或 { ok:false, error }；用 text/plain 送，避開跨網域預檢
-      const data = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, website: form.website.value });
+      const diet = v.note ? v.diet + '：' + v.note : v.diet;   // 試算表「飲食」欄：素食 / 有忌口：不吃牛
+      const data = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, diet, website: form.website.value });
       const r = await fetch(SUBMIT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: data })
         .then((x) => x.json()).catch(() => null);
       if (!r || !r.ok) {
@@ -951,7 +1027,7 @@
           bad: '資料有地方不對，請檢查系所、學號和姓名。',
         };
         $('#msg').textContent = ERR[r?.error] || '網路不穩，沒有送出成功，請再按一次。';
-        show(3);
+        show(4);
         return;
       }
       no = r.no;
@@ -972,7 +1048,7 @@
   const st = Q.get('step');
   // ?step=done&no=0 看 0 號；加 &again 看「已經報名過」提示
   if (st === 'done') showDone({ name: '王小明', dept: '資工系', member: '系會員', sid: 'C112123456', fee: '150' }, Q.has('no') ? +Q.get('no') : 37, Q.has('again'));
-  else if (st) show(Math.min(3, Math.max(1, +st)));
+  else if (st) show(Math.min(4, Math.max(1, +st)));
   else show(1);
 </script>
 <script type="module">

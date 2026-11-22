@@ -133,6 +133,9 @@
   .opt b { font-family: Inter; font-size: 34px; line-height: .9; letter-spacing: -.03em; }
   .opt b small { font-size: 13px; letter-spacing: 0; margin-left: 2px; font-family: 'Noto Sans TC'; }
   .opt:has(input:checked) { background: var(--ink); color: var(--card); }
+  .member.diet { grid-template-columns: 1fr 1fr 1fr; }
+  .diet .opt b { font-family: 'Noto Sans TC'; font-weight: 900; font-size: 30px; }
+  #noteF { margin-top: 14px; } #noteF[hidden] { display: none; }
   .opt:has(input:focus-visible) { outline: 3px solid var(--ember); outline-offset: 3px; }
 
   /* 學號、姓名：底線輸入框 */
@@ -250,7 +253,7 @@
   <main class="main">
     <div class="sheet">
       <form class="form" id="form" novalidate>
-        <div class="steps"><span>報名 ENTRY</span><i class="on"></i><i id="bar2"></i><i id="bar3"></i><span>3 步</span></div>
+        <div class="steps"><span>報名 ENTRY</span><i class="on"></i><i id="bar2"></i><i id="bar3"></i><span>4 步</span></div>
 
         <section class="q">
           <header><h3><em>01</em>選你的系所</h3><span class="hint">抽一張牌</span></header>
@@ -266,7 +269,20 @@
         </section>
 
         <section class="q">
-          <header><h3><em>03</em>你是誰</h3><span class="hint">繳費時對名單用</span></header>
+          <header><h3><em>03</em>有沒有忌口</h3><span class="hint">幫你備對的餐點</span></header>
+          <div class="member diet">
+            <label class="opt"><input type="radio" name="diet" value="葷食"><b>葷</b><span>什麼都吃</span></label>
+            <label class="opt"><input type="radio" name="diet" value="素食"><b>素</b><span>素食</span></label>
+            <label class="opt"><input type="radio" name="diet" value="有忌口"><b>忌</b><span>有忌口</span></label>
+          </div>
+          <div class="field" id="noteF" hidden>
+            <label for="dietNote" id="noteLb">忌口</label>
+            <input id="dietNote" name="dietNote" autocomplete="off" placeholder="例：不吃牛、海鮮過敏" maxlength="40">
+          </div>
+        </section>
+
+        <section class="q">
+          <header><h3><em>04</em>你是誰</h3><span class="hint">繳費時對名單用</span></header>
           <div class="fields">
             <div class="field">
               <label for="sid">學號</label>
@@ -302,7 +318,7 @@
           </div>
           <div class="pay"><small>應繳報名費</small><b id="tFee">150</b></div>
         </div>
-        <p class="note">報名成功！請截圖這張牌。<br>於 <b>12.15（二）前</b>向系學會繳費，名單上打勾才算完成。</p>
+        <p class="note">報名成功！請截圖這張牌。<br>於 <b>12.15（二）前</b>向系學會繳費，名單上打勾才算完成。<br><br><b>服裝</b>　聖誕 × 仙境：穿上紅、綠或黑白格<br>兔耳、領結、禮帽、撲克牌配件都歡迎</p>
         <button class="again" id="again" type="button">幫另一位朋友報名</button>
       </div>
     </div>
@@ -350,7 +366,8 @@
   const val = () => {
     const dept = form.dept.value, member = form.querySelector('[name=member]:checked');
     const sid = $('#sid').value.trim().toUpperCase(), name = $('#name').value.trim();
-    return { dept, member: member?.value || '', fee: member?.dataset.fee || '', sid, name };
+    const diet = form.querySelector('[name=diet]:checked')?.value || '', note = diet && diet !== '葷食' ? $('#dietNote').value.trim() : '';
+    return { dept, member: member?.value || '', fee: member?.dataset.fee || '', sid, name, diet, note };
   };
   const SID_OK = /^[A-Z0-9]{8,12}$/;
   const refresh = () => {
@@ -358,7 +375,11 @@
     $('#bar2').classList.toggle('on', !!(v.dept && v.member));
     $('#bar3').classList.toggle('on', !!(v.dept && v.member && SID_OK.test(v.sid) && v.name));
     $('#sum').innerHTML = v.dept ? `${v.dept}${v.member ? '・' + v.member : ''}${v.fee ? `<br>報名費 <b>${v.fee}</b> 元` : ''}` : '還沒選系所';
-    $('#go').disabled = !(v.dept && v.member && v.sid && v.name);
+    $('#go').disabled = !(v.dept && v.member && v.diet && (v.diet !== '有忌口' || v.note) && v.sid && v.name);
+    // 選素食 → 素食種類 (選填)；選有忌口 → 忌口 (必填)
+    $('#noteF').hidden = !v.diet || v.diet === '葷食';
+    $('#noteLb').textContent = v.diet === '素食' ? '素食種類（選填）' : '忌口';
+    $('#dietNote').placeholder = v.diet === '素食' ? '例：蛋奶素、全素' : '例：不吃牛、海鮮過敏';
   };
   form.addEventListener('input', refresh);
   form.addEventListener('change', refresh);
@@ -384,7 +405,8 @@
     let no = Math.floor(Math.random() * 200) + 1;
     if (SUBMIT_URL) {
       // Apps Script 回傳 { ok, no } 或 { ok:false, error }；用 text/plain 送，避開跨網域預檢
-      const body = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, website: form.website.value });
+      const diet = v.note ? v.diet + '：' + v.note : v.diet;
+      const body = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, diet, website: form.website.value });
       const r = await fetch(SUBMIT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body })
         .then((x) => x.json()).catch(() => null);
       if (!r || !r.ok) {
