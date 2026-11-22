@@ -34,6 +34,13 @@
   @media (min-width: 700px) { #stage { box-shadow: 0 0 0 1.5px var(--ink), 0 30px 80px rgba(20, 30, 24, .35); } }
   #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
+  /* 載入動畫：像素白兔 (戴聖誕帽＋單片眼鏡) 原地跑，3D 準備好 (.ready) 就淡出 */
+  #loader { position: absolute; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 14px;
+    background: linear-gradient(135deg, var(--paper-a), var(--paper-b)); transition: opacity .4s, visibility 0s .4s; }
+  .ready #loader { opacity: 0; visibility: hidden; }
+  #loader canvas { width: 168px; height: 120px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #loader p { margin: 0; font: 700 13px/1 'Noto Sans TC', sans-serif; letter-spacing: .18em; color: var(--ink); opacity: .75; }
+  #loader p b { display: inline-block; width: 1.6em; text-align: left; font-weight: 700; }
   /* 鑰匙孔畫面上的字（開始掉就淡出） */
   .over { position: absolute; inset: 0; pointer-events: none; padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
     padding-top: max(22px, env(safe-area-inset-top)); transition: opacity .35s; opacity: 0; }
@@ -326,6 +333,57 @@
   </g><path d="M14 14 l3 -3 3 3 -3 3z" fill="currentColor"/></symbol><symbol id="h" viewBox="0 0 32 30"><path d="M16 29C7 21 0 15.5 0 8.6 0 3.8 3.7 0 8.4 0c3.2 0 5.9 1.8 7.6 4.6C17.7 1.8 20.4 0 23.6 0 28.3 0 32 3.8 32 8.6 32 15.5 25 21 16 29z"/></symbol></svg>
 
 <div id="stage">
+  <div id="loader" aria-label="載入中"><canvas id="ldr" width="28" height="20"></canvas><p>要遲到了<b id="ldrDots"></b></p></div>
+  <script>
+    // 像素兔：28×20 小畫布逐格畫 (身體、頭、耳朵、聖誕帽、單片眼鏡、腿)，再補一圈深色外框，放大 6 倍 = 像素風
+    (() => {
+      const cv = document.getElementById('ldr'), g = cv.getContext('2d'), Wd = 28, Hd = 20, N = 6;
+      const C = { W: '#f3efe4', S: '#d8d0bd', R: '#9e1b22', P: '#e6a3a0', Y: '#d9a441', K: '#151515' };
+      const frames = [];
+      for (let f = 0; f < N; f++) {
+        const t = f / N * Math.PI * 2, bob = Math.round(-Math.abs(Math.sin(t)) * 1.4), px = new Map();
+        const put = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < Wd && y < Hd) px.set(x + ',' + y, c); };
+        const ell = (cx, cy, a, b, c) => { for (let y = -b; y <= b; y++) for (let x = -a; x <= a; x++) if ((x / a) ** 2 + (y / b) ** 2 <= 1) put(cx + x, cy + y, c); };
+        const line = (x0, y0, x1, y1, c, w = 1) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2); for (let i = 0; i <= n; i++) { const k = i / n; for (let d = 0; d < w; d++) put(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k + d, c); } };
+        const leg = Math.cos(t), lift = Math.max(0, Math.sin(t)), y0 = 11 + bob;
+        const foot = (x0, y, x1, c, w) => { line(x0, y, x1, 16 - Math.round(lift), c, w); put(x1 + 1, 16 - Math.round(lift), c); };   // 腿＋腳掌往前一格
+        foot(9, y0 + 2, 8 - 5 * leg, 'S', 2);                    // 後腿 (遠)
+        foot(16, y0 + 1, 17 + 3 * leg, 'S', 1);                  // 前腿 (遠)
+        ell(12, y0, 5, 3, 'W');                                   // 身體
+        ell(8, y0 + 1, 3, 3, 'W');                                // 後腿大腿 (圓屁股)
+        ell(4, y0 - 1, 1, 1, 'W'); put(3, y0 - 1, 'W');           // 尾巴毛球
+        foot(8, y0 + 3, 7 - 5 * leg, 'W', 2);                    // 後腿
+        foot(15, y0 + 2, 16 + 4 * leg, 'W', 1);                  // 前腿
+        const hx = 19, hy = 7 + bob, flap = Math.round(Math.sin(t));
+        line(hx - 1, hy - 3, hx - 6, hy - 7 + flap, 'W', 2);      // 耳朵 (往後飄)
+        line(hx - 1, hy - 2, hx - 5, hy - 6 + flap, 'P', 1);
+        line(hx, hy - 3, hx - 4, hy - 8 + flap, 'W', 2);
+        ell(hx, hy, 3, 3, 'W'); put(hx - 2, hy + 3, 'W');         // 頭＋臉頰接脖子
+        put(hx + 3, hy + 1, 'P');                                 // 鼻子
+        for (let x = hx - 2; x <= hx + 2; x++) put(x, hy - 3, 'R'), put(x, hy - 2, 'R');   // 聖誕帽 (蓋在頭頂)
+        put(hx - 1, hy - 4, 'R'); put(hx, hy - 4, 'R'); put(hx - 2, hy - 5, 'R'); put(hx - 3, hy - 5 + flap, 'R');   // 帽尖往後垂
+        ell(hx - 5, hy - 5 + flap, 1, 1, 'W');                    // 白毛球
+        for (let x = hx - 3; x <= hx + 3; x++) put(x, hy - 1, 'W');   // 帽緣白毛
+        put(hx + 1, hy, 'K');                                     // 眼睛
+        for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) put(hx + 1 + dx, hy + dy, 'Y');   // 單片眼鏡
+        put(hx, hy + 2, 'Y'); put(hx - 1, hy + 3, 'Y');            // 眼鏡鍊
+        const out = new Map(px);                                   // 外框：空白且貼著上色的格子 → 深色
+        for (const k of px.keys()) { const [x, y] = k.split(',').map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const kk = (x + dx) + ',' + (y + dy); if (!px.has(kk)) out.set(kk, 'K'); } }
+        frames.push(out);
+      }
+      let f = 0, dot = 0, ground = 0;
+      const tick = () => {
+        if (document.body.classList.contains('ready')) return;
+        g.clearRect(0, 0, Wd, Hd);
+        g.fillStyle = C.K; for (let x = -ground; x < Wd; x += 4) g.fillRect(x, 18, 2, 1);   // 地面虛線往後跑
+        for (const [k, c] of frames[f]) { const [x, y] = k.split(',').map(Number); if (y < 18) { g.fillStyle = C[c]; g.fillRect(x, y, 1, 1); } }
+        f = (f + 1) % N; ground = (ground + 1) % 4;
+        if (f === 0) document.getElementById('ldrDots').textContent = '.'.repeat(dot = (dot + 1) % 4);
+        setTimeout(tick, 85);
+      };
+      tick();
+    })();
+  </script>
   <canvas id="c"></canvas>
   <div class="over">
     <div class="frame"></div>

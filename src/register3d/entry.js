@@ -447,7 +447,7 @@ function uAt(t) {
 // ---- 畫布大小：跟著舞台 (直幅)，像素總數設上限，手機不會太重 ----
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
-const MAXPX = +q.get('px') || 1.4e6;
+let MAXPX = +q.get('px') || 1.4e6;   // 會依手機速度自動往下調 (?px= 指定就不調)
 let W = 0, H = 0;
 function measure() {
   const r = stage.getBoundingClientRect();
@@ -509,11 +509,27 @@ addEventListener('resize', () => { measure(); if (!playing) draw(); });
 measure();
 await viewD.cutReady;
 const fixed = q.has('step') ? DUR : q.has('t') ? Math.max(0, +q.get('t')) : q.has('u') ? null : undefined;   // ?step= (看表單) 直接停在定格
-view.u = 1.3; draw();                     // 第一次：編譯 (不計時)
-const tA = performance.now(); view.u = 2.6; draw(); const ms = performance.now() - tA;
+view.u = 1.3; draw(); view.u = 0.92; draw();   // 第一次：編譯棋盤＋鑰匙孔窗 (不計時)
+// 自動畫質：在載入動畫後面真的連播幾格 (掉到底的鑰匙孔窗 ↔ 棋盤定格輪流)，量實際每格間隔；
+// 太慢 (< 約 38 fps) 就降低畫布像素再量，層數和效果都不減。只量一格會被 GPU 同步等待騙到，所以用連播。
+const nextFrame = () => new Promise((r) => requestAnimationFrame(r));
+async function bench(n = 12) {
+  const ts = [];
+  for (let i = 0; i < n; i++) { const t = await nextFrame(); view.u = i % 2 ? 2.6 : 0.92; draw(); ts.push(t); }
+  const d = ts.slice(4).map((t, i) => t - ts[i + 3]).sort((a, b) => a - b);
+  return d[d.length >> 1];   // 中位數，避開偶爾一格卡頓
+}
+const QBUDGET = +q.get('budget') || 26, MINPX = 0.45e6;
+let ms = await bench();
+const ms0 = ms, px0 = W * H;
+for (let k = 0; k < 4 && !q.has('px') && ms > QBUDGET && MAXPX > MINPX; k++) {
+  MAXPX = Math.max(MINPX, MAXPX * Math.min(0.7, (QBUDGET / ms) ** 1.5));
+  measure(); ms = await bench();
+}
 window.__frameMs = ms;
-console.log(`[入口] 棋盤一格 ${ms.toFixed(0)} ms，畫布 ${W}×${H}`);
-if (ms > (+q.get('slow') || 250) && !q.has('force3d')) throw Object.assign(new Error('太慢'), { slow: true, ms });
+window.__quality = { ms0: +ms0.toFixed(1), px0, ms: +ms.toFixed(1), px: W * H, W, H };
+console.log(`[入口] 每格 ${ms0.toFixed(0)}→${ms.toFixed(0)} ms，畫布 ${W}×${H} (${(W * H / 1e6).toFixed(2)}M px)`);
+if (ms > (+q.get('slow') || 90) && !q.has('force3d')) throw Object.assign(new Error('太慢'), { slow: true, ms });
 if (fixed !== undefined) {                 // 檢查用定格：?t=秒數 或 ?u=
   view.u = fixed === null ? Math.min(UMAX, Math.max(0, +q.get('u'))) : uAt(fixed);
   done = true;
