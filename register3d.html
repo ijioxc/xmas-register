@@ -38,14 +38,15 @@
   #loader { position: absolute; inset: 0; z-index: 40; pointer-events: none; --loader-exit: .24s;
     transition: opacity var(--loader-exit) ease-out, visibility 0s var(--loader-exit); }
   #loader .ld-dark { position: absolute; inset: 0; background: #0d1210; }
-  #loader .ld-halo { position: absolute; left: 50%; top: 47%; width: 420px; height: 420px; border-radius: 50%;
+  #loader .ld-halo { position: absolute; left: 50%; top: var(--khy, 44%); width: 420px; height: 420px; border-radius: 50%;
     transform: translate(-50%, -50%) scale(1);
     background: radial-gradient(circle, rgba(255, 214, 150, .62) 0%, rgba(236, 140, 64, .42) 18%, rgba(170, 72, 30, .2) 40%, rgba(90, 36, 18, .07) 58%, transparent 71%);
     animation: ld-breathe 2.4s ease-in-out infinite; }
   @keyframes ld-breathe { 50% { opacity: .82; } }
-  #loader .ld-run { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
+  #loader .ld-run { position: absolute; inset: var(--khy, 44%) 0 auto; display: grid; justify-items: center; gap: 12px;
+    translate: 0 -50px; transform-origin: 50% 50px;
     transition: transform var(--loader-exit) cubic-bezier(.45, 0, .7, .35); }
-  #loader canvas { width: 140px; height: 100px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #loader canvas { display: block; width: 140px; height: 100px; image-rendering: pixelated; image-rendering: crisp-edges; }
   #loader p { margin: 0; font: 700 13px/1 'Noto Sans TC', sans-serif; letter-spacing: .18em; color: var(--card); opacity: .85;
     display: flex; align-items: center; transform: translateX(2.6em); }   /* 往右推一點：字＋後面的點整體置中 */
   /* 6 個點一直往右跑 (跟兔子同方向)，右邊淡出 */
