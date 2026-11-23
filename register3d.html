@@ -92,6 +92,14 @@
   .side span { display: block; font-size: 8.5px; font-weight: 700; letter-spacing: .1em; margin-bottom: 3px; }
   .side .dl b { display: block; font-size: 30px; line-height: .95; letter-spacing: -.03em; margin-bottom: 3px; }
   .side .en b { font-size: 12px; line-height: 1.1; }
+  .side .dc b { display: block; font-size: 12px; line-height: 1.1; }   /* 正裝提醒：跟截止日同一疊 */
+  /* 參與系所：直排兩條、各 5 系、沒有花色，左高右低錯落：左邊用鑰匙孔圓頭左側那塊空白、右邊放低一點 (網址 ?dv=s 才顯示，預設不放) */
+  .cd-spine { display: none; position: absolute; writing-mode: vertical-rl; font-size: 9.5px; line-height: 1.15; letter-spacing: .12em;
+    font-weight: 500; white-space: nowrap; pointer-events: none; }
+  [data-dv="s"] .cd-spine { display: block; }
+  .cd-spine b { display: inline-block; font-weight: 500; margin-inline-end: 6px; }   /* 沒有花色，靠間距分出一個系 */
+  .cd-l { left: 30px; top: calc(var(--khb, 69%) - 292px); }
+  .cd-r { right: 30px; top: calc(var(--khb, 69%) - 196px); }
   .bottom { position: absolute; left: 30px; right: 30px; bottom: calc(22px + env(safe-area-inset-bottom)); }
   h1 { margin: 0; font-family: 'Noto Sans TC', sans-serif; font-weight: 700; letter-spacing: -.02em; line-height: .95; font-size: 54px; }
   h1 span { display: block; } h1 span + span { text-align: right; }
@@ -563,10 +571,13 @@
   <div class="over">
     <div class="frame"></div>
     <div class="date"><span class="one">1</span>2<svg class="heart"><use href="#h"/></svg>22<small>TUE<br>星期二</small></div>
+    <!-- 參與系所：左右兩條，左邊從上往下、右邊從下往上 -->
+    <div class="cd-spine cd-l"><b>國企系</b><b>車輛系</b><b>財稅系</b><b>土木系</b><b>觀光系</b></div>
+    <div class="cd-spine cd-r"><b>機械系</b><b>能源系</b><b>金資系</b><b>資工系</b><b>電子系</b></div>
     <div class="side">
       <div class="dl"><span>報名・繳費截止 DEADLINE</span><b>12.14</b>MON / 星期一</div>
       <div class="en"><b>Christmas<br>in Wonderland</b></div>
-      <div>聖誕晚會<br>2026</div>
+      <div class="dc"><span>DRESS CODE</span><b>請著正式服裝</b></div>
     </div>
     <button id="go3d" type="button" aria-label="往上滑開始"><svg class="a3" viewBox="0 0 28 12"><path d="M2 10 11.6 3.4Q14 1.8 16.4 3.4L26 10"/></svg><svg class="a2" viewBox="0 0 28 12"><path d="M2 10 11.6 3.4Q14 1.8 16.4 3.4L26 10"/></svg><svg class="a1" viewBox="0 0 28 12"><path d="M2 10 11.6 3.4Q14 1.8 16.4 3.4L26 10"/></svg></button>
     <div class="bottom">
@@ -743,6 +754,7 @@
   if (SUBMIT_URL) document.querySelector('.demo').remove();
 
   const DEPTS = ['國企系', '車輛系', '財稅系', '土木系', '觀光系', '機械系', '能源系', '金資系', '資工系', '電子系'];
+  document.body.dataset.dv = new URLSearchParams(location.search).get('dv') || 'n';   // 科系位置版本 (暫時，選定後拿掉)
   const SUITS = [['♠', ''], ['♥', 'r'], ['♣', ''], ['♦', 'r']];
   const GUEST = '其他系';   // 隱藏金牌：外系朋友，一律非系會員 250，跳過會員那題
   const $ = (s) => document.querySelector(s);
