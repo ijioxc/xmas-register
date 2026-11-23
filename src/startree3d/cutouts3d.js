@@ -15,7 +15,7 @@ export const CUT_DEFAULTS = {
 // 第二段動畫節奏 (u = 滾輪進度；兩顆棋子定格在 1.6，剪紙全部站好在 2.6；鏡頭兩段都一樣不動)
 export const ANIM_DEFAULTS = {
   gA: 1.75, gSnap: 2.05, gB: 2.20, gDrop: 700, gSpin: 1, gBounce: 40,   // 愛麗絲：開始掉、紙條拉緊、停住；掉多高、轉幾圈、彈多大
-  hA: 1.95, hB: 2.30, hFrom: -470, hHops: 3, hHopH: 20, hWob: 0.15,   // 傳令兔：正面朝鏡頭從 x hFrom 跳進來，跳幾下、多高、左右搖多少
+  hA: 1.95, hB: 2.30, hFrom: -470, hFromZ: null, hHops: 3, hHopH: 20, hWob: 0.15,   // 傳令兔：從 (hFrom, hFromZ) 跳到站位
   rA: 2.20, rB: 2.50, rFrom: -380, rUp: 0.12, rLean: 0.3, rHops: 7, rHopH: 28, rDash: 0,   // rDash 1 = 一立起來就全速衝 (不慢慢起步)   // 奔跑兔：從 x rFrom 立起來 (佔 rUp 的時間)，往右衝，衝刺時前傾、跳幾下、多高
 };
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -129,10 +129,13 @@ export async function buildCutouts() {
       const o = items.h, t = prog(T.hA, T.hB, u);
       o.visible = u > T.hA;
       const t1 = clamp01(t / 0.85), t2 = clamp01((t - 0.85) / 0.15);
-      o.position.x = T.hFrom + (T.hX - T.hFrom) * t1;
+      const travel = T.hFromZ == null ? t1 : ss(t1);
+      o.position.x = T.hFrom + (T.hX - T.hFrom) * travel;
+      const fromZ = T.hFromZ ?? T.hZ;
+      o.position.z = fromZ + (T.hZ - fromZ) * travel;
       o.position.y += T.hHopH * Math.abs(Math.sin(Math.PI * T.hHops * t1));
       o.rotation.z += T.hWob * Math.sin(Math.PI * T.hHops * t1);
-      o.scale.y *= 1 - 0.1 * Math.sin(Math.PI * t2);
+      o.scale.y *= 1 - 0.07 * Math.sin(Math.PI * t2);
     }
     // 奔跑兔：平躺 → 立體書一樣啪地立起來 → 往右加速衝 → 急煞，身體往前傾再回正
     {

@@ -33,6 +33,8 @@
   @media (max-width: 699px) { #stage { width: 100vw; height: 100dvh; } }
   @media (min-width: 700px) { #stage { box-shadow: 0 0 0 1.5px var(--ink), 0 30px 80px rgba(20, 30, 24, .35); } }
   #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #queenTalk { position: absolute; z-index: 5; width: max-content; margin: 0;
+    pointer-events: none; transition: opacity .12s linear; }
 
   /* 共用載入動畫：場景畫好後，兔子與文字原地縮小，底幕淡出。 */
   #loader { position: absolute; inset: 0; z-index: 40; pointer-events: none; --loader-exit: .24s;
@@ -279,13 +281,7 @@
   .wardrobe-map button[hidden] { display:none; }
   .wardrobe-map button:disabled { pointer-events:none; }
   .wardrobe-map button[data-row="outfit"] { z-index:1; }
-  .wardrobe-map span {
-    padding:1px 4px; white-space:nowrap; letter-spacing:.04em;
-    font:600 clamp(9px,2.7cqw,12px)/1.4 'Noto Sans TC',sans-serif;
-    color:#37281f; background:#f0e3cb; border:1px solid #b89a71; border-radius:2px;
-    box-shadow:0 1px 3px #21170e40;
-  }
-  .wardrobe-map button[aria-pressed="true"] span { color:#fff2dc; background:#6d3038; border-color:#b89a71; }
+  .wardrobe-map button:focus-visible { outline:2px solid #ffe6ac; outline-offset:2px; }
   .wardrobe-egg { position: absolute; z-index: 8; left: 0; top: 0;
     visibility: hidden; translate: 0 calc(-100% - 12px);
     padding: 10px 15px; border: 1px solid #98651f; border-radius: 12px; pointer-events: none;
@@ -427,8 +423,9 @@
   body:not(.landed):not(.talkon) .talk { visibility: hidden; }   /* 倒帶回封面時尾巴不要留在畫面下緣 */
   .talk-top { --shift: -14%; --sheet: 47%; }   /* 預設：對話框浮在上面 (?talk=bottom 關掉) */
   .talk-top .talk { position: absolute; left: 14px; margin: 0; z-index: 4; max-width: 78%; }
+  .talk, #queenTalk { padding: 20px 18px 13px; color: var(--ink); opacity: 0; }
   .talk { position: relative; width: fit-content; max-width: var(--talk-w); min-width: 52%; margin: 6px 0 2px var(--talk-x);
-    padding: 20px 18px 13px; color: var(--ink); opacity: 0; transform-origin: var(--ox, 30%) var(--oy, -40px); }
+    transform-origin: var(--ox, 30%) var(--oy, -40px); }
   .talk.go { animation: talkpop .5s cubic-bezier(.2, .9, .3, 1.25) both; animation-delay: var(--base, 0s); }
   @keyframes talkpop { from { opacity: 0; transform: scale(.4) rotate(-6deg); } to { opacity: 1; transform: none; } }
   .talk-bg { position: absolute; left: 0; top: 0; overflow: visible; z-index: -1; pointer-events: none;
@@ -491,6 +488,11 @@
   </g><path d="M14 14 l3 -3 3 3 -3 3z" fill="currentColor"/></symbol><symbol id="h" viewBox="0 0 32 30"><path d="M16 29C7 21 0 15.5 0 8.6 0 3.8 3.7 0 8.4 0c3.2 0 5.9 1.8 7.6 4.6C17.7 1.8 20.4 0 23.6 0 28.3 0 32 3.8 32 8.6 32 15.5 25 21 16 29z"/></symbol></svg>
 
 <div id="stage">
+  <div id="queenTalk" aria-live="polite">
+    <svg class="talk-bg" aria-hidden="true"></svg>
+    <p class="talk-q" lang="en">Christmas in Wonderland</p>
+    <p class="talk-s">愛理不理 聖誕有你</p>
+  </div>
   <div id="loader" aria-label="載入中"><div class="ld-dark"></div><div class="ld-halo"></div>
     <div class="ld-run"><div class="ld-pix"><canvas id="ldg" width="28" height="20"></canvas><canvas id="ldr" width="28" height="20"></canvas></div><p>要遲到了<b></b></p></div></div>
   <script>
@@ -704,7 +706,7 @@
                     <text x="130" y="168" text-anchor="middle" font-family="Inter" font-weight="700" font-size="15" letter-spacing="1" fill="currentColor">12·22</text>
                   </g>
                 </svg>
-                <div class="tk-dress"><span class="k">DRESS CODE 服裝</span><p id="dress1">正式服裝</p><p id="dress2">襯衫搭西裝褲或裙子，或穿洋裝</p></div>
+                <div class="tk-dress"><span class="k">DRESS CODE 服裝</span><p id="dress1">男生｜襯衫＋領帶，搭西裝褲、素色牛仔褲或長褲</p><p id="dress2">女生｜過膝連身洋裝，或襯衫搭牛仔褲</p></div>
                 <div class="tk-pay">請於 <b>12.14</b>（一）前<br>向系學會繳 <b id="tFee2">150</b> 元<small>名單上打勾，才算報名完成</small></div>
               </div>
               <div class="tk-stub">
@@ -780,8 +782,9 @@
     }
     if (step === 3 && n !== 3) wardrobeSequence = '';
     const changed = n !== step;
+    const leavingDepartments = step === 1 && n > 1;
     step = n;
-    if (changed && body.classList.contains('landed')) window.playStepRunner?.();
+    if (changed && !leavingDepartments && body.classList.contains('landed')) window.playStepRunner?.();
     const outfitChosen = n === 3 && Boolean(fittingStep.dataset.family);
     fittingStep.classList.toggle('outfit-chosen', outfitChosen);
     wardrobeMap.hidden = !outfitChosen;
@@ -835,12 +838,12 @@
         const title = document.createElement('h3');
         title.textContent = heading;
         section.append(title);
-        for (const [label, text, isRestriction] of rows) {
+        for (const [label, text, isRestriction, isContinuation] of rows) {
           const row = document.createElement('p');
-          if (label) {
+          if (label || isContinuation) {
             row.className = 'dress-row';
             const key = document.createElement('strong');
-            key.textContent = label;
+            key.textContent = label || '';
             row.append(key);
           }
           if (isRestriction) row.className = 'dress-restriction';
@@ -864,6 +867,19 @@
   }
 
   const TALK = { tail: 44, liftMax: 90, half: 15 };   // 尾巴長度、最多往上提多少、尾巴根部半寬 (px)
+  window.drawTalkBubble = (svg, w, h, bx, tx, ty, tailDown) => {
+    const R = 16, half = TALK.half;
+    // 外框：圓角方塊＋上緣一條略彎的尾巴 (像剪刀剪出來)
+    const path = (o = 0) => {
+      const r = R - o, L = o, T = o, Rr = w - o, B = h - o;
+      return `M${L + r},${T} L${bx - half + o},${T} Q${bx - half * .3},${T + ty * .45} ${tx},${ty + o * 2.2} Q${bx + half * .2},${T + ty * .4} ${bx + half - o},${T}`
+        + ` L${Rr - r},${T} Q${Rr},${T} ${Rr},${T + r} L${Rr},${B - r} Q${Rr},${B} ${Rr - r},${B} L${L + r},${B} Q${L},${B} ${L},${B - r} L${L},${T + r} Q${L},${T} ${L + r},${T}Z`;
+    };
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    const flip = tailDown ? ` matrix(1 0 0 -1 0 ${h})` : '';
+    svg.innerHTML = ['#c2b290', '#d4c6a8', '#e4d9c2'].map((c, i) => `<path d="${path()}" fill="${c}" transform="translate(0 ${3 - i})${flip}"/>`).join('')
+      + `<path class="face" d="${path()}" transform="${flip}"/><path class="inner" d="${path(5)}" transform="${flip}"/>`;
+  };
   // 預設：對話框浮在畫面上方 (愛麗絲往上吊高、畫布少往上推)；?talk=bottom = 舊版，放在牌桌上方
   const TOP = Q.get('talk') !== 'bottom';
   if (TOP) { body.classList.add('talk-top'); $('#stage').appendChild(talk); }
@@ -905,17 +921,7 @@
     if (my > -20) ty = -16;                       // 兔子不在上面 (畫面太矮) → 只留短尾巴
     const k = my < 0 ? ty / my : 0; tx = bx + (mx - bx) * k;
     }
-    // 外框：圓角方塊＋上緣一條略彎的尾巴 (像剪刀剪出來)
-    const path = (o = 0) => {
-      const r = R - o, L = o, T = o, Rr = w - o, B = h - o;
-      return `M${L + r},${T} L${bx - half + o},${T} Q${bx - half * .3},${T + ty * .45} ${tx},${ty + o * 2.2} Q${bx + half * .2},${T + ty * .4} ${bx + half - o},${T}`
-        + ` L${Rr - r},${T} Q${Rr},${T} ${Rr},${T + r} L${Rr},${B - r} Q${Rr},${B} ${Rr - r},${B} L${L + r},${B} Q${L},${B} ${L},${B - r} L${L},${T + r} Q${L},${T} ${L + r},${T}Z`;
-    };
-    const svg = $('#talkBg');
-    svg.setAttribute('width', w); svg.setAttribute('height', h);
-    const flip = TOP ? ` matrix(1 0 0 -1 0 ${h})` : '';
-    svg.innerHTML = ['#c2b290', '#d4c6a8', '#e4d9c2'].map((c, i) => `<path d="${path()}" fill="${c}" transform="translate(0 ${3 - i})${flip}"/>`).join('')
-      + `<path class="face" d="${path()}" transform="${flip}"/><path class="inner" d="${path(5)}" transform="${flip}"/>`;
+    window.drawTalkBubble($('#talkBg'), w, h, bx, tx, ty, TOP);
     talk.style.setProperty('--ox', tx + 'px'); talk.style.setProperty('--oy', (TOP ? h - ty : ty) + 'px');
   }
   addEventListener('entry:herald', () => requestAnimationFrame(drawTalk));
@@ -1135,8 +1141,8 @@
     const nn = Math.max(0, Math.floor(+no) || 0);
     $('#tCard').innerHTML = `${RANKS[nn % 13]}<span style="color:${red ? 'var(--heart)' : 'inherit'}">${suit}</span>`;
     const look = document.querySelector('.step[data-step="3"]').dataset.family;
-    $('#dress1').textContent = look === 'm' ? '襯衫配西裝褲' : look === 'f' ? '洋裝，或襯衫配裙子、西裝褲' : '正式服裝';
-    $('#dress2').textContent = look === 'm' ? '領帶、外套自由搭配' : look === 'f' ? '外套自由搭配' : '襯衫搭西裝褲或裙子，或穿洋裝';
+    $('#dress1').textContent = look === 'm' ? '襯衫＋領帶' : look === 'f' ? '過膝連身洋裝' : '男生｜襯衫＋領帶，搭西裝褲、素色牛仔褲或長褲';
+    $('#dress2').textContent = look === 'm' ? '西裝褲或素色牛仔褲' : look === 'f' ? '也可穿襯衫搭牛仔褲' : '女生｜過膝連身洋裝，或襯衫搭牛仔褲';
     $('#eyebrow').textContent = '報名完成 DONE';
     document.activeElement?.blur();
     body.classList.add('is-done');
@@ -1201,21 +1207,21 @@
   const fittingStep = document.querySelector('.step[data-step="3"]');
   const wardrobe = [
     ['ivory','米白洋裝','米白中長洋裝。','可以搭素色鞋和簡單飾品。'],
-    ['short','短洋裝','短洋裝。','挑方便走動和轉身的裙長。'],
+    ['short','短洋裝','短洋裝。','可參考款式，入場請選過膝長度。'],
     ['f','長禮服','酒紅長禮服。','裙襬留些活動空間，轉身跳舞更自在。'],
-    ['skirt','女式西裝','收腰短外套配高腰西裝褲。','炭灰收腰外套，搭同色高腰西裝褲。'],
-    ['boot','長靴','俐落的長靴。','素面靴筒和低跟可搭短洋裝或西裝褲。'],
+    ['skirt','女式西裝','收腰短外套配高腰西裝褲。','可參考外套搭配，入場可穿襯衫與牛仔褲。'],
+    ['boot','長靴','俐落的長靴。','素面低跟長靴可搭過膝洋裝或牛仔褲。'],
     ['loafer','樂福鞋','樂福鞋。','低跟好走，露出一點鞋面更簡潔。'],
     ['pump','低跟包鞋','低跟包鞋。','選走得穩的跟高，站久一點也舒服。'],
     ['mary','瑪莉珍鞋','瑪莉珍鞋。','腳背扣帶固定鞋身，搭裙裝或褲裝都可以。'],
   ];
   const gentlemanWardrobe = [
     ['m','扣襟西裝','深藍灰西裝。','同色西裝褲配白襯衫與酒紅領帶。'],
-    ['blazer','義式便裝','沙色單西。','扣上腰間一顆，搭白襯衫、深色西裝褲和樂福鞋。'],
-    ['polo','針織 Polo','墨綠針織 Polo。','搭淺色西裝褲，保留柔和的義式休閒感。'],
-    ['shirt','白襯衫','基本白襯衫。','把襯衫紮進深色西裝褲，搭皮鞋或低調的素色鞋。'],
+    ['blazer','義式便裝','沙色單西。','沙色外套可搭白襯衫、領帶和深色西裝褲。'],
+    ['polo','針織 Polo','墨綠針織 Polo。','可參考配色，入場請穿襯衫並打領帶。'],
+    ['shirt','白襯衫','基本白襯衫。','白襯衫搭領帶，可配西裝褲或素色牛仔褲。'],
     ['oxford','黑皮鞋','黑色繫帶皮鞋。','適合搭成套西裝。'],
-    ['g-loafer','棕樂福','棕色樂福皮鞋。','適合搭沙色單西或針織 Polo。'],
+    ['g-loafer','棕樂福','棕色樂福皮鞋。','適合搭沙色外套、襯衫與領帶。'],
     ['white-leather','白皮革鞋','全白皮革板鞋。','選乾淨、低筒的款式，像全白 Air Force 1。'],
     ['black-leather','黑皮革鞋','全黑素面皮革鞋。','選鞋面和鞋底同色的低筒款。'],
   ];
@@ -1225,12 +1231,10 @@
   for (const [family, options] of [['f', wardrobe], ['m', gentlemanWardrobe]]) {
     options.forEach(([id, label], index) => {
       const button = document.createElement('button');
-      const caption = document.createElement('span');
       button.type = 'button';
       Object.assign(button.dataset, { id, family, index, row: index < 4 ? 'outfit' : 'shoe' });
+      button.setAttribute('aria-label', label);
       button.hidden = true;
-      caption.textContent = label;
-      button.append(caption);
       wardrobeMap.append(button);
       button.addEventListener('click', () => pickLook(id, true));
     });
@@ -1259,12 +1263,19 @@
   }));
   const dressRules = {
     m: [
-      ['服裝', [['上身', '襯衫或針織 Polo'], ['下身', '西裝褲'], ['', '請勿穿運動服。', true]]],
-      ['鞋款', [['', '皮鞋，或全黑／全白皮革板鞋。'], ['', '請勿穿跑鞋或拖鞋。', true]]],
+      ['服裝', [['上身', '襯衫＋領帶'], ['下身', '西裝褲，或素色牛仔褲'], ['', '請勿穿運動服或短褲。', true]]],
+      ['鞋款', [['', '請勿穿拖鞋或露腳趾的鞋子。', true]]],
     ],
     f: [
-      ['服裝', [['裙裝', '洋裝，或正式上衣配裙'], ['褲裝', '女式西裝或正式褲裝'], ['', '請勿穿運動服。', true]]],
-      ['鞋款', [['', '包鞋、樂福鞋或長靴。'], ['', '請勿穿運動鞋或拖鞋。', true]]],
+      ['服裝', [
+        ['穿著', '過膝連身洋裝，或正式襯衫搭牛仔褲／西裝褲'],
+        ['例如', '經典小黑裙'],
+        ['', '蕾絲洋裝', false, true],
+        ['', '緞面洋裝', false, true],
+        ['', '絲絨洋裝', false, true],
+        ['', '請勿穿運動服。', true],
+      ]],
+      ['鞋款', [['', '請勿穿拖鞋或露腳趾的鞋子。', true]]],
     ],
   };
   function pickLook(id, showItem = false) {

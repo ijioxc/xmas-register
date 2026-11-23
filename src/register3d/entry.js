@@ -11,8 +11,8 @@ import { createFittingRoom, SHOE_SCALE } from './dress.js?v=40';
 // 紙的顏色、陰影、光全部照 2D 公式，寫在「海報座標」裡（每片紙自己的座標），
 // 換視角時顏色會黏在紙上走。
 import * as THREE from 'three';
-import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=12';   // ?v= 改版就加 1，避免瀏覽器用舊快取
-import { createGuest } from './guest.js?v=17';
+import { createViewD, TUNE_DEFAULTS } from '../startree3d/viewD.js?v=15';   // ?v= 改版就加 1，避免瀏覽器用舊快取
+import { createGuest } from './guest.js?v=18';
 const tune = { ...TUNE_DEFAULTS };   // 用 3D 編輯頁定稿的滑桿預設值
 // 對話框浮在上面 (預設) → 愛麗絲吊高、往右一點讓位；矮手機畫面上緣比較低，提少一點免得頭被切掉 (?ay= ?ax= 可調)
 { const qq = new URLSearchParams(location.search);
@@ -370,9 +370,9 @@ function renderWindow(S, SH, cam) {
 
 // ════════════════ 以下是報名網頁新加的 ════════════════
 // 剪紙提早出場：鏡頭還在降最後一段，愛麗絲就開始掉 → 不會停在空棋盤上 (原本 gA 1.75 / hA 1.95 / rA 2.2)
-// 出場順序：右邊奔跑兔先衝出來 → 愛麗絲、傳令兔同時出場；集中在同一段時間跑完
-// 奔跑兔：鏡頭還在降、一露頭就直接衝出來 (rDash)；傳令兔再提早一點；拿掉腳下白色紙腳
-Object.assign(tune, { rA: 1.30, rB: 1.72, rUp: 0.08, rDash: 1, gA: 1.60, gSnap: 1.92, gB: 2.08, hA: 1.48, hB: 1.96, feet: 0 });
+// 開場順序：皇后先打招呼並退場 → 傳令兔進場，再開始報名問答
+// 奔跑兔在鏡頭下降時先離開；傳令兔等皇后退場後才進場
+Object.assign(tune, { rA: 1.30, rB: 1.72, rUp: 0.08, rDash: 1, gA: 1.60, gSnap: 1.92, gB: 2.08, hA: 1.96, hB: 2.12, hFromZ: -350, feet: 0 });
 // 傳令兔站前面一點 (還在同一格白格子裡：z −200…−100)，講話時比較大、手上的金牌也跟著往前
 tune.hZ = -112;
 viewD.tune(tune);
@@ -422,6 +422,8 @@ function render(canvas, W, H) {
 
 let LIFT;   // 讀一次 CSS 就好
 let departmentExit = 0;
+let cardHandoff = false;
+let queenPiece = null;
 let guest = null;   // 隱藏金牌「其他系」(guest.js，掛在傳令兔手上)
 const dressScene = { retreat: 0, hop: 0, lift: 0 };
 let runnerElapsed = null, stepRunElapsed = null, stepRunFrame;
@@ -487,6 +489,18 @@ function placeRunner(runner, elapsed, finish) {
   runner.scale.y *= 1 - 0.06 * (1 - hop) ** 3 * effort;
 }
 
+function placeCardHandoff(runner, herald, progress) {
+  const meetX = herald.position.x + 38, meetZ = herald.position.z - 10;
+  const approach = sstep(0, 0.46, progress);
+  const escape = sstep(0.48, 1, progress);
+  runner.position.x = lerp(lerp(runner.position.x, meetX, approach), -680, escape);
+  runner.position.z = lerp(lerp(runner.position.z, meetZ, approach), herald.position.z - 80, escape);
+  const stride = Math.abs(Math.sin(Math.PI * progress * 9));
+  runner.position.y += 14 * stride * sstep(0, 0.12, progress);
+  runner.scale.x *= -1;
+  runner.rotation.z = 0.14 + 0.08 * stride;
+}
+
 function stopStepRun() {
   cancelAnimationFrame(stepRunFrame);
   stepRunElapsed = null;
@@ -495,7 +509,7 @@ function stopStepRun() {
 }
 
 function playStepRunner() {
-  if (stepRunElapsed !== null) {
+  if (stepRunElapsed !== null || cardHandoff) {
     stepRunQueued = true;
     return;
   }
@@ -570,31 +584,62 @@ function applyView() {
     // 棋盤一出現就是往上推好的位置 (CSS --shift，例：-14% → NDC +0.28)，落地時不再跳
     c.lift = (LIFT ??= -2 * (parseFloat(getComputedStyle(document.body).getPropertyValue('--shift')) / 100 || 0));
     viewD.set(1, 0, 0, c);
-    const queen = viewD.placeDressScene(dressScene.retreat, dressScene.hop, dressScene.lift, departmentExit);
-    guest?.place(queen, departmentExit);
+    const queenExit = Math.max(departmentExit, sstep(QUEEN_EXIT_A, QUEEN_EXIT_B, view.u));
+    const heraldExit = queenExit * sstep(2.02, UMAX, view.u);
+    queenPiece = viewD.placeDressScene(dressScene.retreat, dressScene.hop, dressScene.lift, queenExit, heraldExit);
+    let cardRunner;
     if (viewD.cutouts && (runnerElapsed !== null || document.body.classList.contains('is-done'))) placeFinishScene();
     else if (dState.on && viewD.cutouts) {
-      const runner = viewD.cutouts.items.r;
-      if (stepRunElapsed !== null) placeRunner(runner, stepRunElapsed, false);
+      const { r: runner, h: herald } = viewD.cutouts.items;
+      if (cardHandoff) {
+        placeCardHandoff(runner, herald, departmentExit);
+        cardRunner = runner;
+      } else if (stepRunElapsed !== null) placeRunner(runner, stepRunElapsed, false);
       else if (runnerOnLeft) runner.visible = false;
     }
+    guest?.place(departmentExit, cardRunner);
   }
 }
 
 // ---- 時間軸：秒 → u (u 0–1 掉進鑰匙孔，1–1.6 鏡頭降到棋盤，1.6–2.6 剪紙人物出場) ----
 // 關鍵格 [秒, u]；中間速度接續，頭尾慢慢起步／停下。?dur= 改總長，?t=秒數 定格在那一秒
-const DUR = +q.get('dur') || 5.3;
-const KEYS = [[0, 0], [2.4, 1], [3.8, P1], [5.3, UMAX]].map(([t, u]) => [t * DUR / 5.3, u]);
-const TALK_U = 2.0;   // 傳令兔快站好就跳出對話框 (不等整段結束)
-function uAt(t) {
+const MOTION_DURATION = +q.get('dur') || 5.3;
+const KEYS = [[0, 0], [2.4, 1], [3.8, P1], [5.3, UMAX]].map(([t, u]) => [t * MOTION_DURATION / 5.3, u]);
+const QUEEN_TALK_A = 1.60, QUEEN_TALK_B = 1.78, QUEEN_EXIT_A = 1.72, QUEEN_EXIT_B = 1.96;
+const QUEEN_HOLD_U = 1.69;
+const QUEEN_HOLD_SECONDS = 2.2;
+const TALK_U = 2.12;   // 傳令兔進場完成後才開始第一題
+function motionUAt(t) {
   if (t <= 0) return 0;
-  if (t >= DUR) return UMAX;
+  if (t >= MOTION_DURATION) return UMAX;
   let i = 1; while (KEYS[i][0] < t) i++;
   const slope = (j) => (KEYS[j + 1][1] - KEYS[j][1]) / (KEYS[j + 1][0] - KEYS[j][0]);
   const m = (j) => (j === 0 || j === KEYS.length - 1 ? 0 : (slope(j - 1) + slope(j)) / 2);
   const [t0, u0] = KEYS[i - 1], [t1, u1] = KEYS[i], h = t1 - t0, s = (t - t0) / h;
   const s2 = s * s, s3 = s2 * s;
   return (2 * s3 - 3 * s2 + 1) * u0 + (s3 - 2 * s2 + s) * h * m(i - 1) + (-2 * s3 + 3 * s2) * u1 + (s3 - s2) * h * m(i);
+}
+
+function motionTimeAt(u) {
+  let lower = KEYS[2][0], upper = MOTION_DURATION;
+  for (let i = 0; i < 24; i++) {
+    const middle = (lower + upper) / 2;
+    if (motionUAt(middle) < u) lower = middle;
+    else upper = middle;
+  }
+  return (lower + upper) / 2;
+}
+const holdStart = motionTimeAt(QUEEN_HOLD_U);
+const heraldStart = motionTimeAt(tune.hA);
+const heraldDuration = (MOTION_DURATION - heraldStart) * 1.45;
+const DUR = heraldStart + heraldDuration + QUEEN_HOLD_SECONDS;
+function uAt(t) {
+  if (t < holdStart) return motionUAt(t);
+  if (t < holdStart + QUEEN_HOLD_SECONDS) return QUEEN_HOLD_U;
+  const motionTime = t - QUEEN_HOLD_SECONDS;
+  if (motionTime < heraldStart) return motionUAt(motionTime);
+  if (t >= DUR) return UMAX;
+  return lerp(tune.hA, UMAX, (motionTime - heraldStart) / heraldDuration);
 }
 
 // ---- 畫布大小：跟著舞台 (直幅)，像素總數設上限，手機不會太重 ----
@@ -629,7 +674,7 @@ function placeRunnerSpeech() {
 }
 window.placeRunnerSpeech = placeRunnerSpeech;
 function draw() {
-  applyView(); render(canvas, W, H);
+  applyView(); render(canvas, W, H); placeQueenTalk();
   placeRunnerSpeech();
   const map=document.querySelector('.wardrobe-map');
   if (!map || map.hidden || !dState.on || !wardrobeRacks) return;
@@ -651,13 +696,38 @@ function draw() {
   }
 }
 
+const queenTalkHead = new THREE.Vector3();
+function placeQueenTalk() {
+  const bubble = document.getElementById('queenTalk');
+  if (!bubble) return;
+  const amount = sstep(QUEEN_TALK_A, QUEEN_TALK_A + 0.035, view.u) * (1 - sstep(QUEEN_TALK_B - 0.04, QUEEN_TALK_B, view.u));
+  if (!dState.on || amount <= 0 || !queenPiece?.visible) { bubble.style.opacity = '0'; return; }
+  queenPiece.updateMatrixWorld(true);
+  // 用帽頂投影定位，讓對話框尾尖停在帽子上方。
+  queenPiece.localToWorld(queenTalkHead.set(20, 190, 0)).project(viewD.camera);
+  const x0 = (queenTalkHead.x + 1) * stage.clientWidth / 2;
+  const w = bubble.offsetWidth, h = bubble.offsetHeight;
+  const left = Math.max(8, Math.min(x0 - w / 2, stage.clientWidth - w - 8));
+  const y = (1 - queenTalkHead.y) * stage.clientHeight / 2;
+  const tailTargetY = y - 16;
+  const top = Math.max(12, tailTargetY - 44 - h);
+  const tx = THREE.MathUtils.clamp(x0 - left, 4, w - 4);
+  const bx = THREE.MathUtils.clamp(tx + 26, 37, w - 37);
+  window.drawTalkBubble(bubble.firstElementChild, w, h, bx, tx, -Math.max(8, tailTargetY - top - h), true);
+  bubble.style.left = `${left}px`;
+  bubble.style.top = `${top}px`;
+  bubble.style.opacity = `${amount}`;
+}
+
 // ---- 播放 ----
 const body = document.body;
 let t0 = null, playing = false, done = false;
+let skipWelcome = false;
 const PROF = q.has('prof') ? (window.__prof = []) : null;   // ?prof：記錄每一格 draw 花幾 ms
 function tick(now) {
   if (t0 === null) t0 = now;
-  const t = (now - t0) / 1000;
+  const t = skipWelcome ? DUR : (now - t0) / 1000;
+  skipWelcome = false;
   view.u = uAt(t);
   if (view.u >= TALK_U && !body.classList.contains('talkon')) { body.classList.add('talkon'); dispatchEvent(new Event('entry:talk')); }
   const tp = performance.now(); draw();
@@ -672,20 +742,32 @@ function start() {
   requestAnimationFrame(tick);
 }
 
-// 滑一下 (往上滑 / 滾輪往下 / 點提示 / 方向鍵) = 開始；播放中所有滑動都擋掉，不會卡在半路
+function startOrSkipWelcome() {
+  if (playing && !done && view.u > QUEEN_TALK_A && view.u < QUEEN_TALK_B && queenPiece?.visible) {
+    skipWelcome = true;
+  } else {
+    start();
+  }
+}
+
+// 封面點擊或滑動開始。皇后致詞時可點擊或上滑，直接進到第一題。
 const lock = (e) => { if (!done) e.preventDefault(); };
 addEventListener('wheel', (e) => { lock(e); if (e.deltaY > 4) start(); }, { passive: false });
 let ty = null;
 addEventListener('touchstart', (e) => { ty = e.touches[0].clientY; }, { passive: true });
-addEventListener('touchmove', (e) => { lock(e); if (ty !== null && ty - e.touches[0].clientY > 24) { ty = null; start(); } }, { passive: false });
+addEventListener('touchmove', (e) => { lock(e); if (ty !== null && ty - e.touches[0].clientY > 24) { ty = null; startOrSkipWelcome(); } }, { passive: false });
 addEventListener('keydown', (e) => { if (['ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { lock(e); start(); } });
-stage.addEventListener('click', start);
+stage.addEventListener('click', startOrSkipWelcome);
 
 // 倒帶：第一題往下拉 → 時間軸倒著播回鑰匙孔封面 (比掉下去快)；之後再往上滑又可以重新掉一次
 const REWIND = 0.5;   // 倒帶花的時間 = 掉落長度 × REWIND
 function rewind() {
   if (playing || !done) return;
   playing = true; body.classList.remove('landed', 'talkon');
+  cancelAnimationFrame(departmentFrame);
+  departmentStageOn = true;
+  departmentExit = 0;
+  cardHandoff = false;
   const tStart = DUR;
   let s0 = null;
   function back(now) {
@@ -717,9 +799,20 @@ window.setDepartmentStage = on => {
   const from = departmentExit, to = Number(!on);
   const start = performance.now();
   const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : (on ? 650 : 1550);
+  if (!on && duration && document.body.classList.contains('landed')) {
+    stopStepRun();
+    cardHandoff = true;
+  }
   function move(now) {
     const elapsed = now - start;
     departmentExit = lerp(from, to, duration ? Math.min(1, elapsed / duration) : 1);
+    if (cardHandoff && elapsed >= duration) {
+      cardHandoff = false;
+      runnerOnLeft = !on;
+      const runQueued = !on && stepRunQueued;
+      stepRunQueued = false;
+      if (runQueued) playStepRunner();
+    }
     draw();
     dispatchEvent(new Event('entry:herald'));
     if (elapsed < duration) departmentFrame = requestAnimationFrame(move);

@@ -70,21 +70,17 @@ export async function createGuest(herald, glow = 0.35) {
   const card = new THREE.Group(); card.add(glowMesh, front, back);
   herald.add(card);
 
-  let sel = 0;   // 0–1：被選中 → 往上舉、轉正、變大一點
+  let sel = 0, carried = false;   // 0–1：被選中 → 往上舉、轉正、變大一點
   const carriedPosition = new THREE.Vector3();
-  function place(queen, exit = 0) {
+  function place(exit = 0, runner) {
     card.position.set(G.x, h / 2 + G.lift * sel, G.z);
     card.rotation.set(0, G.yaw * (1 - sel), G.roll * (1 - sel));
     card.visible = exit < 1;
+    carried = Boolean(runner) && exit >= 0.53;
     card.scale.setScalar(1 + 0.25 * sel);
-    if (!queen || !card.visible) return;
-    const offer = THREE.MathUtils.smoothstep(exit, 0.09, 0.27);
-    card.position.y += 0.12 * offer;
-    card.position.z -= 0.30 * offer;
-    const pickup = THREE.MathUtils.smoothstep(exit, 0.19, 0.40);
-    carriedPosition.copy(queen.position);
-    carriedPosition.y += 54;
-    carriedPosition.z += 36;
+    if (!runner || !card.visible) return;
+    const pickup = THREE.MathUtils.smoothstep(exit, 0.38, 0.53);
+    runner.localToWorld(carriedPosition.set(0.36, 0.43, 0.24));
     card.position.lerp(herald.worldToLocal(carriedPosition), pickup);
     card.rotation.y *= 1 - pickup;
     card.scale.multiplyScalar(1 - 0.25 * pickup);
@@ -93,7 +89,7 @@ export async function createGuest(herald, glow = 0.35) {
   // 牌的三個角投影到畫面 (0–1 畫布座標)：左下、右下、左上 → 網頁算出中心、寬高、角度，讓外發光貼著牌
   const corners = [[-w / 2, -h / 2], [w / 2, -h / 2], [-w / 2, h / 2]].map(([x, y]) => new THREE.Vector3(x, y, 0));
   function rect(camera) {
-    if (!herald.visible || !card.visible) return null;
+    if (!herald.visible || !card.visible || carried) return null;
     camera.updateMatrixWorld(); card.updateWorldMatrix(true, false);
     return corners.map((c) => { const p = c.clone().applyMatrix4(card.matrixWorld).project(camera); return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 }; });
   }
