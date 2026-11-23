@@ -56,6 +56,8 @@
     animation: ld-dots .51s linear infinite; }
   @keyframes ld-dots { to { background-position-x: .87em; } }
   .ready #loader { opacity: 0; visibility: hidden; }
+  #stage:not(.loader-positioned) #loader .ld-run,
+  #stage:not(.loader-positioned) #loader .ld-halo { visibility: hidden; }
   .ready #loader .ld-run { transform: scale(.12); }
   #loader .ld-halo { transition: transform var(--loader-exit) cubic-bezier(.45, 0, .7, .35); }
   .ready #loader .ld-halo { transform: translate(-50%, -50%) scale(.12); }
@@ -1318,6 +1320,7 @@
     console.warn('[入口] 3D 載入失敗', e);
     const p = document.querySelector('#loader p');
     if (p) p.innerHTML = '這個瀏覽器打不開<br>請用 Safari 或 Chrome 開啟';
+    document.getElementById('stage').classList.add('loader-positioned');
   });
 </script>
 </body>

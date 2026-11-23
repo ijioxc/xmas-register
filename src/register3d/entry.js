@@ -706,8 +706,6 @@ addEventListener('resize', () => { measure(); if (!playing) draw(); });
 
 // ---- 開場：等剪紙圖載好，先在背景把棋盤畫一次 (編譯 shader、量速度)，再顯示鑰匙孔 ----
 measure();
-fitCover();
-placeKeyholeCue();
 await viewD.cutReady;
 guest = await createGuest(viewD.cutouts.items.h, tune.cutGlow);
 departmentExit = Number(!document.querySelector('.step.on[data-step="1"]'));
@@ -748,6 +746,7 @@ window.setDepartmentStage = on => {
 await document.fonts?.ready;   // 標題字型載好才量得準
 fitCover();
 placeKeyholeCue();
+stage.classList.add('loader-positioned');
 const fixed = q.has('step') ? DUR : q.has('t') ? Math.max(0, +q.get('t')) : q.has('u') ? null : undefined;   // ?step= (看表單) 直接停在定格
 view.u = 1.3; draw(); view.u = 0.92; draw();   // 第一次：編譯棋盤＋鑰匙孔窗 (不計時)
 // 自動畫質：在載入動畫後面真的連播幾格 (掉到底的鑰匙孔窗 ↔ 棋盤定格輪流)，量實際每格間隔；
