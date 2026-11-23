@@ -679,7 +679,7 @@ let ty = null;
 addEventListener('touchstart', (e) => { ty = e.touches[0].clientY; }, { passive: true });
 addEventListener('touchmove', (e) => { lock(e); if (ty !== null && ty - e.touches[0].clientY > 24) { ty = null; start(); } }, { passive: false });
 addEventListener('keydown', (e) => { if (['ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { lock(e); start(); } });
-document.getElementById('go3d').addEventListener('click', start);
+stage.addEventListener('click', start);
 
 // 倒帶：第一題往下拉 → 時間軸倒著播回鑰匙孔封面 (比掉下去快)；之後再往上滑又可以重新掉一次
 const REWIND = 0.5;   // 倒帶花的時間 = 掉落長度 × REWIND
