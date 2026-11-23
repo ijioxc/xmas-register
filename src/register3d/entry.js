@@ -773,11 +773,10 @@ console.log(`[入口] 每格 ${ms0.toFixed(0)}→${ms.toFixed(0)} ms，畫布 ${
 if (fixed !== undefined) {                 // 檢查用定格：?t=秒數 或 ?u=
   view.u = fixed === null ? Math.min(UMAX, Math.max(0, +q.get('u'))) : uAt(fixed);
   done = true;
-  body.classList.add('ready', 'falling'); if (view.u >= UMAX) { body.classList.add('landed'); dispatchEvent(new Event('entry:landed')); }
-  if (view.u === 0) body.classList.remove('falling');
+  if (view.u > 0) body.classList.add('falling');
+  if (view.u >= UMAX) { body.classList.add('landed'); dispatchEvent(new Event('entry:landed')); }
 } else {
   view.u = 0;
-  body.classList.add('ready');
 }
 draw();
 // 封面「往上滑」箭頭放在鑰匙孔下緣：把第 0 層鑰匙孔最底點 (模板 (0, RB)) 投影到畫面，寫進 CSS 變數 --khb
@@ -798,12 +797,13 @@ function placeKeyholeCue() {
   placeCameraA(0, 0); camera.updateMatrixWorld();
   const p = new THREE.Vector3(0, 0, RB / CT).project(camera);
   stage.style.setProperty('--khb', ((1 - p.y) / 2 * 100).toFixed(2) + '%');
-  // 鑰匙孔最深處 (樹尖 = 黑色小鑰匙孔，位在 apex) → 載入動畫的光暈飛到這裡
+  // 鑰匙孔最深處 (樹尖 = 黑色小鑰匙孔，位在 apex) → 封面的小星星往這裡掉
   const a = new THREE.Vector3(0, P.H, 0).project(camera);
   stage.style.setProperty('--khx', ((1 + a.x) / 2 * 100).toFixed(2) + '%');
   stage.style.setProperty('--khy', ((1 - a.y) / 2 * 100).toFixed(2) + '%');
 }
 placeKeyholeCue();
+body.classList.add('ready');
 addEventListener('resize', () => requestAnimationFrame(() => { if (!playing && !done) { fitCover(); draw(); } placeKeyholeCue(); }));
 window.__ready = true;
 
