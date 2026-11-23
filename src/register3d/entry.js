@@ -786,12 +786,14 @@ function fitCover() {
   const bt = document.querySelector('.over .bottom');
   if (!bt) return;
   const sr = stage.getBoundingClientRect(), asp = sr.width / sr.height;
-  const T = 0.115, B = Math.max(T + 0.3, (bt.getBoundingClientRect().top - sr.top - 14) / sr.height);   // 箭頭在鑰匙孔裡 → 底只留 14px
-  P.aw = Math.max(AW0, 1450 * asp / (B - T));            // 鑰匙孔全高 = 330 + RB ≈ 1450 海報單位
+  const topLimit = 0.115;
+  const titleTop = bt.getBoundingClientRect().top - sr.top;
+  const keyholeBottom = Math.max(topLimit + 0.3, (titleTop - 24) / sr.height);
+  P.aw = Math.max(AW0, 1450 * asp / (keyholeBottom - topLimit));   // 鑰匙孔全高 ≈ 1450 海報單位
   P.ay = AY0; ASPECT = asp; placeCameraA(0, 0); camera.updateMatrixWorld();
   const fy = (z) => (1 - new THREE.Vector3(0, 0, z).project(camera).y) / 2;
-  // 高螢幕鑰匙孔不再放大 (會壓到日期) → 底部貼齊 B，箭頭緊接著標題；矮螢幕剛好塞滿 T–B
-  P.ay = AY0 + (fy(RB / CT) - B) * P.aw / asp;            // 正 = 往上
+  // 鑰匙孔貼近標題上方，箭頭仍跟著孔底定位。
+  P.ay = AY0 + (fy(RB / CT) - keyholeBottom) * P.aw / asp;   // 正 = 往上
 }
 function placeKeyholeCue() {
   placeCameraA(0, 0); camera.updateMatrixWorld();
