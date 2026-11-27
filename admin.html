@@ -1,163 +1,474 @@
 <!doctype html>
 <html lang="zh-Hant">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark"><meta name="theme-color" content="#141416">
 <title>聖誕晚會｜收款管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f6f4ef;color:#302b29;font:16px/1.6 system-ui,sans-serif}header{background:#501e2b;color:#fff7e9;padding:24px max(5vw,18px);display:flex;align-items:center;justify-content:space-between}header strong{font:italic clamp(19px,3vw,32px) Georgia,serif}header small{border:1px solid #a17a80;border-radius:20px;padding:3px 12px}main{max-width:980px;margin:auto;padding:30px 18px 70px}h1{font:700 32px/1.3 system-ui;margin:0 0 18px}h2{font-size:20px;margin:0}button,input,select{font:inherit}button,select,input[type=search]{background:white;border:1px solid #cfc7bf;border-radius:7px;padding:8px 12px;color:inherit}button,select,label input{cursor:pointer}button[aria-pressed=true]{background:#501e2b;color:white;border-color:#501e2b}nav,.filters,.stats,.heading{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.heading{justify-content:space-between}.stats{gap:1px;margin:20px 0;background:#dbd3c9;border:1px solid #dbd3c9;border-radius:10px;overflow:hidden}.stats div{background:#fffcf7;flex:1;padding:14px}.stats b{display:block;font:32px Georgia,serif}.panel{margin-top:16px;background:white;padding:20px;border-radius:10px;border:1px solid #dbd3c9}.filters{margin:14px 0}.filters input{flex:1;min-width:150px}.row{display:grid;grid-template-columns:1fr auto auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #e6e1db}.row small{display:block;color:#615852}.row input{width:20px;height:20px;vertical-align:middle;accent-color:#501e2b}.row label{min-width:82px;cursor:pointer}p{margin:10px 0}#copy{white-space:pre-line;background:#faf7f1;padding:14px}#message{color:#6a303c;font-size:14px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #957038}@media(max-width:520px){.panel{padding:14px}.row{gap:8px}.stats div{padding:10px}.filters input{width:100%;flex-basis:100%}}
+/* 視覺語言跟「高科校園」試玩版一樣：一個點是一個人；● 已繳、○ 未繳；橘色只給要注意的東西 */
+:root{--bg:#141416;--fg:#f2f2f4;--mute:#9a9aa2;--rail:#3a3a40;--past:#7c7c84;--hub:#2a2a2f;--line:rgba(255,255,255,.16);--hot:#ff6a33;--dim:#4c4c53;
+ --mono:ui-monospace,"SF Mono",Menlo,monospace;--sans:-apple-system,"SF Pro Text","PingFang TC","Noto Sans TC",sans-serif;--dot:"Doto",ui-monospace,monospace}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 var(--sans);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+p{margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+button{border:0;background:none;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.mono{font:11px/1.3 var(--mono);letter-spacing:.04em;color:var(--mute);font-variant-numeric:tabular-nums}
+.wrap{max-width:560px;margin:auto;padding:0 max(16px,env(safe-area-inset-left)) calc(60px + env(safe-area-inset-bottom))}
 
-[hidden]{display:none!important}header{justify-content:flex-start;gap:20px;flex-wrap:wrap}header h1{font-size:16px;margin:0}header small{margin-left:auto}.pills{display:flex;gap:7px;flex-wrap:wrap}.pills button{border-radius:100px}.steps{display:grid;grid-template-columns:1fr 1fr}.steps button{text-align:left;padding:12px 16px}.steps small{display:block;font:12px Georgia;letter-spacing:.09em;margin-bottom:3px}.section{margin-top:16px;padding:12px 16px;border-radius:8px;background:#fbf2ed}.section.collected{background:#eff5ef}.section.muted{background:#f2f2f0;color:#676462}.section h2{font-size:15px}.fields{display:grid;gap:12px;margin-top:18px}.fields label{display:grid;gap:4px;font-weight:600}.fields input,.fields textarea{width:100%;padding:9px;border:1px solid #ccbfb8;border-radius:6px;font:inherit}.sample{background:#faf7f1;padding:16px;border-left:3px solid #80505b;white-space:pre-line}.sample img{max-width:100%;max-height:250px;display:block;margin-top:12px}.action{background:#501e2b;color:white}.action:disabled{opacity:.5}button:focus-visible{outline-offset:2px}
+/* 頂欄：純文字分頁，目前那頁變粗 */
+#bar{position:sticky;top:0;z-index:2;background:var(--bg);padding-top:max(14px,env(safe-area-inset-top))}
+#bar .top{display:flex;align-items:center;gap:8px;min-height:44px}
+.idx{display:flex;gap:16px}
+.idx button{white-space:nowrap;font-size:15px;color:var(--mute);padding:4px 0}
+.idx button.on{color:var(--fg);font-weight:700}
+.when{margin-left:auto;text-align:right;min-width:0}
+@media(max-width:480px){.when .upd{display:none}}
+#giftCols{grid-template-columns:1fr 1fr!important;gap:16px}
+#giftCols .lbl{margin-top:30px}
+/* 單位：看起來是一行字，其實是下拉選單 */
+.scope{display:flex;align-items:baseline;gap:10px;margin:18px 0 0}
+.scope h2{margin:0;font-size:22px;font-weight:600}
 
-body{background:#f4f4f2;color:#222}header{background:#191919;border-bottom:4px solid #b5353d}.steps{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px}.steps small,.stats b,header strong{font-family:ui-monospace,monospace}.stats b{font-weight:600}.stats div,.panel{background:#fff}button{min-height:44px}button[aria-pressed=true],.action{background:#202020;color:white}.steps button[aria-pressed=true]{box-shadow:inset 0 -3px #ca434d}.bar{height:7px;background:#dededb;border-radius:6px;overflow:hidden;margin-top:4px}.bar i{height:100%;display:block;background:#bc333c}.member i{background:#353535}#chart article{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;padding:12px 0;border-bottom:1px solid #ddd}#chart article div{font-size:14px}#chart article:first-child{font-weight:700}#targets{margin:18px 0 6px}#chips{margin-bottom:20px}.sample{overflow-wrap:anywhere}.fields>*{min-width:0}@media(max-width:600px){.steps button{padding:8px 5px;font-size:14px;text-align:center}#chart article{grid-template-columns:1fr 1fr;gap:5px 12px}#chart article strong{grid-column:span 2}header{gap:5px 10px}header strong{width:100%}.pills{gap:5px}.pills button{padding:6px 10px}}
+/* 右下單位輪盤（跟高科校園的課程輪盤同一套）：平常縮在角落，按住放大，滑到系名放開就換 */
+#stage{position:fixed;right:0;bottom:0;--dz:min(80vw,44dvh,380px);width:var(--dz);height:var(--dz);pointer-events:none;z-index:5}
+#dial,#glass{position:absolute;right:0;bottom:0;width:100%;height:100%;transform-origin:100% 100%;transition:transform .42s cubic-bezier(.22,1.18,.36,1)}
+#dial.mini,#glass.mini{transform:scale(.25);transition-duration:.26s;transition-timing-function:cubic-bezier(.4,0,.2,1)}
+#dial{touch-action:none;cursor:pointer;pointer-events:auto;outline:none}
+#glass{border-top-left-radius:100%;background:rgba(40,40,46,.18);-webkit-backdrop-filter:blur(8px) saturate(190%);backdrop-filter:blur(8px) saturate(190%);
+ box-shadow:inset 10px 12px 22px -14px rgba(255,255,255,.16),inset -14px -16px 30px -18px rgba(0,0,0,.35),0 10px 36px -6px rgba(0,0,0,.5),0 2px 6px -2px rgba(0,0,0,.5)}
+#glass::after{content:"";position:absolute;inset:0;border-top-left-radius:100%;background:radial-gradient(ellipse 60% 45% at 62% 48%,rgba(255,255,255,.14),transparent 70%);mix-blend-mode:screen}
+#dial text{fill:var(--fg);user-select:none;-webkit-user-select:none;transition:font-size .12s,fill .15s,opacity .15s}
+#dial.mini text,#dial.mini .hub{opacity:0}
+#dial .hub path{fill:none;stroke:var(--fg);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#dial .hub{opacity:.6;transition:opacity .15s}
+#dial .hub.on{opacity:1}
+#dial .mk{fill:var(--hot)}
+#mini{position:absolute;right:0;bottom:0;width:calc(var(--dz)*.25);height:calc(var(--dz)*.25);display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:3px;padding:0 max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) 0;font-size:11px;font-weight:600;pointer-events:none;transition:opacity .2s}
+#mini svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round}
+#dial:not(.mini)~#mini{opacity:0}
+
+/* 區塊標題：小字＋底線，跟「日常 · 3」一樣 */
+.lbl{display:flex;justify-content:space-between;gap:8px;font:11px var(--mono);letter-spacing:.06em;color:var(--mute);padding-bottom:7px;border-bottom:1px solid var(--line);margin-top:44px}
+.lbl b{color:var(--fg);font-weight:400}
+
+/* 總覽：大圓環 */
+#hero{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;margin-top:28px}
+.ring{position:relative;width:148px;height:148px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:13}
+.ring .trk{stroke:var(--rail)}
+.ring .arc{stroke:var(--fg);stroke-linecap:butt;transition:stroke-dasharray .5s}
+.ring .mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .mid b{font:800 46px/1 var(--dot);letter-spacing:.02em}
+.ring .mid span{font-size:15px;color:var(--mute);margin-top:4px}
+#hero h1{font-size:22px;font-weight:600;line-height:1.25;margin:0 0 6px}
+#hero .s{font-size:13px;line-height:1.6;color:var(--mute)}
+#hero .s em{font-style:normal;color:var(--hot)}
+
+/* 點陣：● 已繳、○ 未繳 */
+.dots{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--fg);flex:none}
+.dots i.o{background:none;box-shadow:inset 0 0 0 2px var(--fg)}
+.dots i.e{width:4px;height:4px;margin:2.5px;background:var(--rail)}
+.dots i.h{background:var(--hot)}
+.dots.sm{gap:4px}.dots.sm i{width:7px;height:7px}.dots.sm i.o{box-shadow:inset 0 0 0 1.5px var(--fg)}
+
+/* 系所列：名稱｜點｜數字；點一下進那個系 */
+.dept{display:grid;grid-template-columns:4.2em 1fr auto;gap:14px;align-items:center;width:100%;text-align:left;padding:11px 0;border-bottom:1px solid var(--line)}
+.dept:last-child{border-bottom:0}
+.dept .n{font:12px var(--mono);color:var(--mute);font-variant-numeric:tabular-nums}
+.dept .n b{color:var(--fg);font-weight:400}
+.dept.zero{color:var(--past)}
+
+/* 兩欄（像 日常｜課業） */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cols .lbl{margin-top:44px}
+.it{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.it:last-child{border-bottom:0}
+.it .t{flex:1;min-width:0;font-weight:600}
+.it .n{font:12px var(--mono);color:var(--mute)}
+.it .s{display:block;font-size:12px;font-weight:400;color:var(--mute);margin-top:2px}
+.md{flex:none;width:10px;height:10px;border-radius:50%;background:var(--fg)}
+.md.o{background:none;box-shadow:inset 0 0 0 2px var(--fg)}
+.md.h{background:var(--hot)}
+.md.sq{border-radius:1px}
+.md.e{width:4px;height:4px;margin:0 3px;background:var(--rail)}
+
+/* 名單：左邊班級＋一條直線，右邊每個人（像月頁的「接下來」） */
+.filter{display:flex;gap:16px;margin-top:26px}
+.filter button{font:12px var(--mono);letter-spacing:.04em;color:var(--mute)}
+.filter button.on{color:var(--fg);font-weight:700}
+.cls{display:grid;grid-template-columns:5.6em 1fr;gap:0 12px;margin-top:30px}
+.cls>.k{text-align:right;padding-top:9px}
+.cls>.k b{display:block;font-size:15px;font-weight:600}
+.cls>.k span{display:block;font:11px var(--mono);color:var(--mute);margin-top:3px}
+.cls>.v{border-left:1.5px solid var(--rail);padding-left:12px}
+.pp{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 0;border-bottom:1px solid var(--line)}
+.pp:last-child{border-bottom:0}
+.pp .t{flex:1;min-width:0}
+.pp .t b{font-weight:600}
+.pp .t small{display:block;font:11px var(--mono);color:var(--mute);margin-top:2px}
+.pp .fee{font:12px var(--mono);color:var(--mute)}
+.pp.paid .t b{font-weight:400;color:var(--past)}
+.pp:disabled{opacity:.4}
+.warn{display:block;font-size:12px;color:var(--hot);margin-top:3px}
+.hint{font-size:12px;color:var(--dim);margin-top:30px}
+.empty{padding:40px 0;text-align:center;color:var(--past);font-size:13px}
+
+/* 通知 */
+.fields{display:grid;gap:18px;margin-top:18px}
+.fields label{display:grid;gap:6px;font:11px var(--mono);color:var(--mute)}
+.fields input,.fields textarea{width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:8px 0;font:15px/1.5 var(--sans);color:var(--fg);resize:vertical}
+.fields input:focus,.fields textarea:focus{outline:0;border-bottom-color:var(--fg)}
+.who{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px}
+.who button{font-size:14px;color:var(--mute);padding:3px 0}
+.who button.on{color:var(--fg);font-weight:700}
+.sample{padding:14px 0 14px 14px;border-left:1.5px solid var(--rail);white-space:pre-line;overflow-wrap:anywhere}
+.sample strong{display:block;margin:6px 0}
+.go{font-size:15px;font-weight:600;padding:8px 0;text-align:left}
+.go::after{content:' →'}
+.go:disabled{color:var(--dim);cursor:default}
+
+/* 登入 */
+#app[hidden]~*,#login:not([hidden])~#app #stage{display:none}
+#login{max-width:360px;margin:16vh auto 0;padding:0 20px}
+#login h1{font-size:22px;font-weight:600;margin:6px 0 30px}
+#login input{width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 0;font:18px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--fg)}
+#login input:focus{outline:0;border-bottom-color:var(--fg)}
+#login .go{margin-top:22px}
+#lmsg{margin-top:12px;color:var(--hot)}
+
+.foot{margin-top:56px;display:grid;gap:4px;padding-right:calc(min(80vw,44dvh,380px)*.25)}
+
+@media(max-width:420px){
+ #hero{grid-template-columns:1fr;justify-items:start}
+ .ring{width:132px;height:132px}
+ .cols{grid-template-columns:1fr;gap:0}
+ .cls{grid-template-columns:4.8em 1fr}
+}
 </style>
-<header><strong>Christmas in Wonderland</strong><h1>聖誕晚會收款管理</h1><small>收款後台</small><a href="register3d.html" style="color:inherit;padding:8px">返回活動首頁</a></header>
-<form id="login" class="panel" style="max-width:360px;margin:40px auto"><h2>收款人登入</h2>
-<label>學號<input id="lsid" autocomplete="username" required></label><br>
-<button class="action">登入</button><p id="lmsg" role="status"></p></form>
-<main hidden><nav class="steps"><button id="home"><small>OVERVIEW</small>統計首頁</button><button id="ledger"><small>STEP ONE</small>查看收款狀態</button><button id="mail"><small>STEP TWO</small>管理訊息通知</button></nav><div class="pills" id="units" role="group" aria-label="收款單位"></div>
-<div class="stats"><div>報名人數<b id="total"></b></div><div>已繳費<b id="paid"></b></div><div>未繳費<b id="due"></b></div></div>
-<section class="panel" id="dashboard"><h2 id="scope"></h2><div id="chart"></div><h2>交換禮物</h2><div id="gifts"></div><h2>許願池 <small>（匿名，全部單位合計）</small></h2><div id="wishes"></div></section>
-<section class="panel" id="book"><div class="pills"><button id="unpaid">未繳費</button><button id="settled">已繳費</button></div><div id="rows"></div></section>
-<section class="panel" id="composer" hidden><div class="pills"><button id="remind">繳費提醒</button><button id="invite">繳費成功・邀請函</button></div>
-<p id="targets"></p><div class="pills" id="chips" aria-label="預覽收件人"></div><div class="fields"><label>主旨<input id="subject"></label><label>內文<textarea id="bodyText" rows="4"></textarea></label>
-<small>可插入 {姓名}、{倒數}、{收款單位}。倒數依寄送當天的台灣日期計算。</small>
-<div class="sample"><small id="address"></small><br><strong id="headline"></strong><p id="letter"></p></div><button class="action" id="batch"></button><div id="report" role="status"></div></div></section>
-<p id="message" role="status"></p><small>名單直接讀寫 Google 試算表。訊息通知目前仍是模擬，不會寄出郵件。</small></main><script>
-const get = id => document.getElementById(id);
-const departments = ['國企系','車輛系','財稅系','土木系','觀光系','機械系','能源系','金資系','資工系','電子系','其他系'];
-const names = ['陳品安','林以晴','黃柏宇','張子涵','許書妍','吳宥辰'];
-const API=new URLSearchParams(location.search).get('api')??'https://script.google.com/macros/s/AKfycbyjaxHCTrjMPn6Y62yRuPg3bq7Gox0zjIlHZrppvt1BVDnB9n5xwEl5H8WQasu7YLUh/exec';
-const call=body=>fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>({ok:false,error:'net'}));
-let people=[], wishes=[], token='';
+
+<form id="login" hidden><span class="mono">XMAS · 收款後台</span><h1>收款人登入</h1>
+<label class="mono">學號<input id="lsid" autocomplete="username" required></label>
+<button class="go">登入</button> <button type="button" class="go" id="skip" style="margin-left:18px;color:var(--mute)">測試：跳過登入</button><p id="lmsg" class="mono" role="status"></p></form>
+
+<div class="wrap" id="app" hidden>
+<div id="bar"><div class="top">
+ <nav class="idx"><button id="home">總覽</button><button id="ledger">名單</button><button id="gift">交換</button><button id="mail">通知</button></nav>
+ <span class="when mono" id="when"></span>
+</div></div>
+
+<div class="scope"><h2 id="scopeName">所有單位</h2><span class="mono" id="scopeMeta"></span></div>
+
+<!-- 總覽 -->
+<section id="dashboard">
+ <div id="hero">
+  <div class="ring"><svg viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="42"/><circle class="arc" id="arc" cx="50" cy="50" r="42" pathLength="100"/></svg>
+   <div class="mid"><b id="total">0</b><span>人報名</span></div></div>
+  <div><h1 id="headline"></h1><p class="s" id="heroText"></p></div>
+ </div>
+ <div class="lbl"><span id="chartTitle">各系 · 點一下看名單</span><span>● 已繳 ○ 未繳</span></div>
+ <div id="chart"></div>
+ <div class="lbl"><span>飲食</span><b id="dietSum"></b></div>
+ <div id="diet"></div>
+ <div class="cols">
+  <div><div class="lbl"><span>交換禮物</span></div><div id="gifts"></div></div>
+  <div><div class="lbl"><span>許願池 · 匿名</span></div><div id="wishes"></div></div>
+ </div>
+</section>
+
+<!-- 名單 -->
+<section id="book" hidden>
+ <div class="filter"><button id="unpaid"></button><button id="settled"></button><button id="everyone"></button></div>
+ <div id="rows"></div>
+ <p class="hint">點一下名字切換 ○ 未繳 / ● 已繳</p>
+</section>
+
+<!-- 交換禮物：兩欄各自的名單 -->
+<section id="giftPage" hidden><div class="cols" id="giftCols"></div><div id="giftNone"></div></section>
+
+<!-- 通知 -->
+<section id="composer" hidden>
+ <div class="filter"><button id="remind">繳費提醒</button><button id="invite">繳費成功・邀請函</button></div>
+ <div class="lbl"><span>預覽收件人</span><b id="targets"></b></div>
+ <div class="who" id="chips"></div>
+ <div class="fields"><label>主旨<input id="subject"></label><label>內文<textarea id="bodyText" rows="3"></textarea></label>
+ <p class="mono">可插入 {姓名}、{倒數}、{收款單位}。倒數依寄送當天的台灣日期計算。</p>
+ <div class="sample"><span class="mono" id="address"></span><strong id="mailHead"></strong><p id="letter"></p></div>
+ <button class="go" id="batch"></button><p class="mono" id="report" role="status"></p></div>
+</section>
+
+<div id="stage"><div id="glass" class="mini"></div><svg id="dial" class="mini" viewBox="0 0 300 300" tabindex="0" role="listbox" aria-label="切換收款單位：按住滑到系名放開"></svg>
+ <div id="mini"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.2 12h6.3M14.26 14.26l4.46 4.46M12 15.2v6.3M9.74 14.26l-4.46 4.46M8.8 12H2.5M9.74 9.74 5.28 5.28M12 8.8V2.5M14.26 9.74l4.46-4.46"/></svg><span id="miniName">全部</span></div></div>
+<div class="foot"><p class="mono" id="message" role="status"></p><p class="mono" style="color:var(--dim)">名單直接讀寫 Google 試算表 · 訊息通知目前是模擬，不會寄出郵件 · <a href="register3d.html" style="color:inherit">活動首頁</a></p></div>
+</div>
+
+<script>
+const get=id=>document.getElementById(id);
+const departments=['國企系','車輛系','財稅系','土木系','觀光系','機械系','能源系','金資系','資工系','電子系','其他系'];
+const params=new URLSearchParams(location.search);let DEMO=params.has('demo');
+const API=params.get('api')??'https://script.google.com/macros/s/AKfycbyjaxHCTrjMPn6Y62yRuPg3bq7Gox0zjIlHZrppvt1BVDnB9n5xwEl5H8WQasu7YLUh/exec';
+const DEADLINE='2026-12-14', EVENT='2026-12-22';
+
+// ───── 學號 → 系所、班級（只在後台算，不寫進試算表） ─────
+// 學號 10 碼：學制(1 英文) + 入學年度(3) + 部別(1) + 系所(2) + 班級(1) + 流水號(2)
+const SID_SYSTEMS={C:'四技'},SID_DIVISIONS={'1':'日間部'};
+const SID_DEPTS={'59':'國企系','73':'車輛系','62':'財稅系','41':'土木系','60':'觀光系','42':'機械系','72':'能源系','61':'金資系','51':'資工系','52':'電子系',
+ '43':'工管系','46':'化材系','47':'模具系','54':'電機系','56':'智商系','57':'企管系','29':'會資系','63':'會資系','64':'人資系','65':'文創系'};
+function parseSid(sid){
+ const m=String(sid||'').trim().toUpperCase().match(/^([A-Z])(\d{3})(\d)(\d{2})(\d)\d{2}$/);
+ if(!m)return null;
+ const now=new Date(),roc=now.getFullYear()-1911-(now.getMonth()<7?1:0);   // 學年度：8 月起算新學年
+ const g=roc-Number(m[2])+1;
+ // 班級寫法：機械一甲、機械二乙…（1 甲 2 乙 3 丙）
+ const short=(SID_DEPTS[m[4]]||'系所'+m[4]).replace(/系$/,'');
+ const cls='〇甲乙丙丁戊己庚辛壬'[Number(m[5])]||m[5], year='〇一二三四五六七'[g];
+ return {dept:SID_DEPTS[m[4]]||'',deptLabel:SID_DEPTS[m[4]]||'系所'+m[4],
+  grade:short+(g>=1&&g<=7?year:m[2]+'級')+cls,order:m[2]+m[5],
+  head:(SID_SYSTEMS[m[1]]||m[1])+(SID_DIVISIONS[m[3]]||'部別'+m[3])};
+}
+// 學號的系所跟報名選的不一樣 → 提醒
+function mismatch(p){
+ const s=parseSid(p.sid);if(!s||!s.dept)return '';
+ const expect=departments.includes(s.dept)?s.dept:'其他系';
+ return expect===p.dept?'':'學號是'+s.dept+'，報名選了'+p.dept;
+}
+
+const call=body=>DEMO?demoCall(body):fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>({ok:false,error:'net'}));
+let people=[],wishes=[],token='',syncedAt=null;
 try{token=sessionStorage.getItem('xmas-admin-token')||''}catch{}
 async function load(){
  get('message').textContent='讀取名單中…';
  const r=await call({action:'list',token});
  if(!r.ok){if(r.error==='auth')logout('登入已過期，請重新登入。');else get('message').textContent='讀不到名單，請檢查網路後重新整理。';return}
- people=r.people;wishes=r.wishes||[];get('login').hidden=true;document.querySelector('main').hidden=false;
- get('message').textContent='名單更新於 '+new Date(r.at).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei'});render();
+ people=r.people;wishes=r.wishes||[];syncedAt=new Date(r.at);
+ get('login').hidden=true;get('app').hidden=false;get('message').textContent='';render();
 }
-function logout(msg){token='';try{sessionStorage.removeItem('xmas-admin-token')}catch{};document.querySelector('main').hidden=true;get('login').hidden=false;get('lmsg').textContent=msg||''}
+function logout(msg){token='';try{sessionStorage.removeItem('xmas-admin-token')}catch{};get('app').hidden=true;get('login').hidden=false;get('lmsg').textContent=msg||''}
 get('login').onsubmit=async e=>{
  e.preventDefault();get('lmsg').textContent='登入中…';
  const r=await call({action:'login',sid:get('lsid').value.trim().toUpperCase()});
  if(!r.ok){get('lmsg').textContent=r.error==='net'?'連不上伺服器。':'這個學號沒有後台權限。';return}
  token=r.token;try{sessionStorage.setItem('xmas-admin-token',token)}catch{};load();
 };
-let overview=true, all=true, selectedSid='', unit='機械系', focusPaid=false, mailing=false, invitation=false;
+
+// 頁面狀態：一進來就是「總覽 · 所有單位」
+let page='home', unit='', filter='due', invitation=false, selectedSid='';
 const drafts=[
  {subject:'聖誕晚會｜繳費提醒',body:'{姓名}同學你好，報名名單尚未登記收款。請聯絡{收款單位}核對或完成繳費。'},
  {subject:'距離聖誕晚會{倒數}｜你的邀請函',body:'{姓名}同學你好，已收到你的晚會費用！邀請你在 12/22（二）17:30 來到建工校區中正堂，一起度過 Christmas in Wonderland。'}
 ];
 const historyKey='xmas-admin-demo-notices';
 let historyLog=[];
-try{const value=JSON.parse(localStorage.getItem(historyKey));if(Array.isArray(value))historyLog=value}catch{}
-function pressed(id,value){get(id).setAttribute('aria-pressed',String(value))}
-for(const d of ['所有單位',...departments]){
- const b=document.createElement('button');b.textContent=d==='其他系'?'其他系（主辦方）':d;
- b.onclick=()=>{all=d==='所有單位';if(!all)unit=d;render()};get('units').append(b);
-}
-function rowFor(p){
-  const row=document.createElement('div');row.className='row';
-  const person=document.createElement('div'),name=document.createElement('strong'),sid=document.createElement('small');
-  name.textContent=p.name;sid.textContent=p.sid;person.append(name,sid);row.append(person);
-  {
-   const amount=document.createElement('span');amount.textContent='$'+p.fee;
-   const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=p.paid;box.setAttribute('aria-label',p.name+'已繳費');
-   box.onchange=async()=>{const want=box.checked;box.disabled=true;get('message').textContent='儲存中…';
-    const r=await call({action:'paid',token,sid:p.sid,paid:want});box.disabled=false;
-    if(r.ok){p.paid=want;get('message').textContent='已更新 '+p.name+'：'+(want?'已繳費':'未繳費');render()}
-    else{box.checked=!want;if(r.error==='auth')logout('登入已過期，請重新登入。');else get('message').textContent='沒有存到，請再試一次。'}};
-   label.append(box,p.paid?' 已繳費':' 未繳費');row.append(amount,label);
-  }
+try{const v=JSON.parse(localStorage.getItem(historyKey));if(Array.isArray(v))historyLog=v}catch{}
 
- return row;
-}
-function group(){return people.filter(p=>p.dept===unit)}
-function recipients(){return group().filter(p=>p.paid===invitation)}
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
+function dots(paid,due,cls){const b=el('div','dots'+(cls?' '+cls:''));for(let i=0;i<paid;i++)b.append(el('i'));for(let i=0;i<due;i++)b.append(el('i','o'));if(!paid&&!due)b.append(el('i','e'));return b}
+const days=(to)=>{const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());return Math.round((Date.parse(to)-Date.parse(today))/86400000)};
+const scoped=()=>unit?people.filter(p=>p.dept===unit):people;
+const hhmm=d=>d.toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour12:false,hour:'2-digit',minute:'2-digit'});
+
 function render(){
- const list=overview&&all?people:group(), paid=list.filter(p=>p.paid).length;
- get('total').textContent=list.length;get('paid').textContent=paid;get('due').textContent=list.length-paid;
- Array.from(get('units').children).forEach((b,i)=>{
-  b.hidden=i===0&&!overview;
-  b.setAttribute('aria-pressed',overview&&all?i===0:departments[i-1]===unit);
- });
- pressed('home',overview);pressed('ledger',!overview&&!mailing);pressed('mail',!overview&&mailing);pressed('unpaid',!focusPaid);pressed('settled',focusPaid);
- get('book').hidden=overview||mailing;get('composer').hidden=overview||!mailing;
- get('dashboard').hidden=!overview;
- if(overview){
-  get('scope').textContent=(all?'所有單位':unit)+' · 報名分布';
-  const chart=get('chart');chart.replaceChildren();
-  for(const d of (all?['合計',...departments]:[unit])){
-   const members=d==='合計'?list:list.filter(p=>p.dept===d);
-   const line=document.createElement('article'),heading=document.createElement('strong');
-   heading.textContent=d+'　'+members.length+' 人';line.append(heading);
-   for(const [key,yes,no] of [['paid','已繳','未繳'],['member','會員','非會員']]){
-    const count=members.filter(p=>p[key]).length;
-    const cell=document.createElement('div'),bar=document.createElement('div'),part=document.createElement('i');
-    cell.textContent=yes+' '+count+'　'+no+' '+(members.length-count);
-    bar.className='bar '+key;part.style.width=(members.length?100*count/members.length:0)+'%';bar.append(part);cell.append(bar);line.append(cell);
-   }
-   chart.append(line);
-  }
-  const bars=(box,items)=>{box.replaceChildren();const sum=items.reduce((a,x)=>a+x[1],0);
-   for(const [label,count] of items){const cell=document.createElement('div'),bar=document.createElement('div'),part=document.createElement('i');
-    cell.textContent=label+'　'+count+' 人';bar.className='bar';part.style.width=(sum?100*count/sum:0)+'%';bar.append(part);cell.append(bar);cell.style.margin='8px 0';box.append(cell)}};
-  bars(get('gifts'),[['天堂交換',list.filter(p=>p.gift==='天堂交換').length],['地獄交換',list.filter(p=>p.gift==='地獄交換').length],['未填（舊報名）',list.filter(p=>!p.gift).length]]);
-  bars(get('wishes'),wishes.map(w=>[w.wish,w.count]));
- }
- const rows=get('rows');rows.replaceChildren();
- for(const status of [focusPaid,!focusPaid]){
-  const block=document.createElement('section'), title=document.createElement('h2');
-  const members=list.filter(p=>p.paid===status);
-  block.className='section'+(status?' collected':'')+(status!==focusPaid?' muted':'');
-  title.textContent=(status?'已繳費':'未繳費')+' · '+members.length+' 人';block.append(title);
-  for(const p of members)block.append(rowFor(p));rows.append(block);
- }
- if(mailing)renderMail();
+ const list=scoped(),paid=list.filter(p=>p.paid).length;
+ for(const [id,p] of [['home','home'],['ledger','ledger'],['gift','gift'],['mail','mail']])get(id).classList.toggle('on',page===p);
+ get('dashboard').hidden=page!=='home';get('book').hidden=page!=='ledger';get('composer').hidden=page!=='mail';get('giftPage').hidden=page!=='gift';
+ get('miniName').textContent=unit?unit.replace(/系$/,''):'全部';markDial();get('scopeName').textContent=unit?(unit==='其他系'?'其他系（主辦方）':unit):'所有單位';
+ get('scopeMeta').textContent=paid+' / '+list.length+' 已繳';
+ const left=days(DEADLINE);
+ get('when').innerHTML=(left>=0?'剩 '+left+' 天':'已截止')+(syncedAt?'<span class="upd"> · 更新 '+hhmm(syncedAt)+'</span>':'');
+ if(page==='home')renderDashboard(list,paid);
+ if(page==='ledger')renderLedger(list);
+ if(page==='mail')renderMail();
+ if(page==='gift')renderGift(list);
 }
+
+function renderDashboard(list,paid){
+ const due=list.length-paid, mem=list.filter(p=>p.member).length, money=list.filter(p=>p.paid).reduce((a,p)=>a+(Number(p.fee)||0),0),
+  owed=list.filter(p=>!p.paid).reduce((a,p)=>a+(Number(p.fee)||0),0), warn=list.filter(mismatch).length;
+ get('total').textContent=list.length;
+ get('arc').style.strokeDasharray=(list.length?100*paid/list.length:0)+' 100';
+ get('headline').textContent='已繳 '+paid+' · 未繳 '+due;
+ get('heroText').innerHTML='';
+ const lines=['已收 $'+money.toLocaleString()+' · 待收 $'+owed.toLocaleString(),'系會員 '+mem+' · 非系會員 '+(list.length-mem)];
+ const d=days(EVENT);lines.push(d>0?'距離晚會 '+d+' 天':d===0?'今天是晚會':'晚會已結束');
+ lines.forEach((t,i)=>{if(i)get('heroText').append(el('br'));get('heroText').append(t)});
+ if(warn){get('heroText').append(el('br'));get('heroText').append(el('em',null,warn+' 人學號系所不符'))}
+
+ // 各系（看單一系時改成各班）
+ const chart=get('chart');chart.replaceChildren();
+ if(!unit){
+  get('chartTitle').textContent='各系 · 點一下看名單';
+  for(const dpt of departments){
+   const m=list.filter(p=>p.dept===dpt),pd=m.filter(p=>p.paid).length;
+   const b=el('button','dept'+(m.length?'':' zero'));b.append(el('span',null,dpt),dots(pd,m.length-pd));
+   const n=el('span','n');n.innerHTML='<b>'+pd+'</b> / '+m.length;b.append(n);
+   b.onclick=()=>{unit=dpt;page='ledger';render();scrollTo(0,0)};chart.append(b);
+  }
+ }else{
+  get('chartTitle').textContent='各班 · 點一下看名單';
+  for(const [k,m] of classGroups(list)){
+   const pd=m.filter(p=>p.paid).length,b=el('button','dept');
+   b.style.gridTemplateColumns='7.4em 1fr auto';b.append(el('span',null,k),dots(pd,m.length-pd));
+   const n=el('span','n');n.innerHTML='<b>'+pd+'</b> / '+m.length;b.append(n);
+   b.onclick=()=>{page='ledger';filter='all';render();scrollTo(0,0)};chart.append(b);
+  }
+ }
+
+ // 飲食：有忌口的直接列出寫了什麼
+ const diet=get('diet');diet.replaceChildren();
+ const kind=p=>String(p.diet||'').split('：')[0]||'未填';
+ get('dietSum').textContent=list.length+' 人';
+ for(const [k,mk] of [['葷食',''],['素食','o'],['有忌口','h'],['未填','e']]){
+  const m=list.filter(p=>kind(p)===k);if(k==='未填'&&!m.length)continue;
+  const it=el('div','it');it.append(el('span','md '+mk));const t=el('span','t',k);
+  if(k==='有忌口'&&m.length){const s=el('span','s');s.textContent=m.map(p=>p.name+'：'+(String(p.diet).split('：')[1]||'沒寫')).join('、');t.append(s)}
+  it.append(t,el('span','n',m.length+' 人'));diet.append(it);
+ }
+ const items=(box,arr)=>{box.replaceChildren();for(const [t,n,mk] of arr){const it=el('div','it');it.append(el('span','md '+(mk||'')),el('span','t',t),el('span','n',String(n)));box.append(it)}};
+ items(get('gifts'),[['天堂交換',list.filter(p=>p.gift==='天堂交換').length,'o'],['地獄交換',list.filter(p=>p.gift==='地獄交換').length,''],['未填',list.filter(p=>!p.gift).length,'e']]);
+ items(get('wishes'),wishes.map(w=>[w.wish,w.count,'o']));
+}
+
+// 依班級分組：看所有單位時班級前面加系名
+function classGroups(list){
+ const g=new Map();
+ for(const p of list){const s=parseSid(p.sid);const k=s?s.grade:'其他';
+  if(!g.has(k))g.set(k,{order:s?s.deptLabel+(9999-Number(s.order.slice(0,3)))+s.order.slice(3):'~',m:[]});g.get(k).m.push(p)}
+ return [...g.entries()].sort((a,b)=>a[1].order.localeCompare(b[1].order,'zh-Hant',{numeric:true})).map(([k,v])=>[k,v.m]);
+}
+
+function renderLedger(list){
+ const pd=list.filter(p=>p.paid).length;
+ for(const [id,f,t] of [['unpaid','due','未繳 '+(list.length-pd)],['settled','paid','已繳 '+pd],['everyone','all','全部 '+list.length]]){get(id).textContent=t;get(id).classList.toggle('on',filter===f)}
+ const rows=get('rows');rows.replaceChildren();
+ const show=p=>filter==='all'||p.paid===(filter==='paid');
+ let any=false;
+ for(const [k,m] of classGroups(list)){
+  const shown=m.filter(show);if(!shown.length)continue;any=true;
+  const box=el('div','cls'),key=el('div','k'),v=el('div','v'),c=m.filter(p=>p.paid).length;
+  key.append(el('b',null,k),el('span',null,c+'/'+m.length));
+  for(const p of shown)v.append(personRow(p));
+  box.append(key,v);rows.append(box);
+ }
+ if(!any)rows.append(el('p','empty',filter==='due'?'全部都繳清了':'沒有資料'));
+}
+function personRow(p){
+ const b=el('button','pp'+(p.paid?' paid':''));b.setAttribute('aria-pressed',String(p.paid));b.setAttribute('aria-label',p.name+(p.paid?' 已繳費，點一下改成未繳':' 未繳費，點一下改成已繳'));
+ const t=el('span','t'),s=parseSid(p.sid);
+ t.append(el('b',null,p.name),el('small',null,p.sid+(s?' · '+s.head:'')+(unit?'':' · '+p.dept)));
+ const w=mismatch(p);if(w)t.append(el('span','warn',w));
+ b.append(el('span','md'+(p.paid?'':' o')),t,el('span','fee','$'+p.fee));
+ b.onclick=async()=>{const want=!p.paid;b.disabled=true;get('message').textContent='儲存中…';
+  const r=await call({action:'paid',token,sid:p.sid,paid:want});b.disabled=false;
+  if(r.ok){p.paid=want;get('message').textContent=p.name+' → '+(want?'● 已繳費':'○ 未繳費');render()}
+  else if(r.error==='auth')logout('登入已過期，請重新登入。');else get('message').textContent='沒有存到，請再試一次。'};
+ return b;
+}
+
+// 交換禮物：天堂｜地獄兩欄，各列出名字；沒填的放下面
+function renderGift(list){
+ const col=(title,m,mk)=>{const box=el('div');const l=el('div','lbl');l.append(el('span',null,title),el('b',null,m.length+' 人'));box.append(l);
+  if(!m.length)box.append(el('p','empty','還沒有人'));
+  for(const p of m){const it=el('div','it'),t=el('span','t',p.name);const s=parseSid(p.sid);t.append(el('span','s',s?s.grade:p.sid));it.append(el('span','md '+mk),t);box.append(it)}
+  return box};
+ get('giftCols').replaceChildren(col('天堂交換',list.filter(p=>p.gift==='天堂交換'),'o'),col('地獄交換',list.filter(p=>p.gift==='地獄交換'),''));
+ const none=list.filter(p=>!p.gift);get('giftNone').replaceChildren();
+ if(none.length){const l=el('div','lbl');l.append(el('span',null,'未填（舊報名）'),el('b',null,none.length+' 人'));get('giftNone').append(l);
+  const it=el('p','s');it.style.cssText='font-size:13px;color:var(--mute);margin-top:10px;line-height:1.7';it.textContent=none.map(p=>p.name).join('、');get('giftNone').append(it)}
+}
+function recipients(){return scoped().filter(p=>p.paid===invitation)}
 function fill(template,p){
- const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());
- const days=Math.round((Date.parse('2026-12-22')-Date.parse(today))/86400000);
- return template.replaceAll('{姓名}',p.name).replaceAll('{倒數}',days>0?'倒數 '+days+' 天':days===0?'活動當天':'活動已結束').replaceAll('{收款單位}',unit==='其他系'?'活動主辦方':unit+'系學會');
+ const d=days(EVENT);
+ return template.replaceAll('{姓名}',p.name).replaceAll('{倒數}',d>0?'倒數 '+d+' 天':d===0?'活動當天':'活動已結束').replaceAll('{收款單位}',p.dept==='其他系'?'活動主辦方':p.dept+'系學會');
 }
 function preview(){
  const list=recipients(),p=list.find(p=>p.sid===selectedSid);
- get('address').textContent=p?'收件人　'+p.name+'〈'+p.sid+'@nkust.edu.tw〉':'';
- get('headline').textContent=p?fill(get('subject').value,p):'目前沒有收件人';
+ get('address').textContent=p?'TO '+p.name+'〈'+p.sid+'@nkust.edu.tw〉':'';
+ get('mailHead').textContent=p?fill(get('subject').value,p):'目前沒有收件人';
  get('letter').textContent=p?fill(get('bodyText').value,p):'';
  get('batch').disabled=!p||!get('subject').value.trim()||!get('bodyText').value.trim();
 }
 function renderMail(){
  const list=recipients(),draft=drafts[Number(invitation)];
- pressed('invite',invitation);pressed('remind',!invitation);
+ get('invite').classList.toggle('on',invitation);get('remind').classList.toggle('on',!invitation);
  get('subject').value=draft.subject;get('bodyText').value=draft.body;
  if(!list.some(p=>p.sid===selectedSid))selectedSid=list[0]?.sid||'';
- get('chips').replaceChildren(...list.map(p=>{
-  const button=document.createElement('button');button.textContent=p.name;
-  button.setAttribute('aria-pressed',p.sid===selectedSid);
-  button.onclick=()=>{selectedSid=p.sid;for(const b of get('chips').children)b.setAttribute('aria-pressed',b===button);preview()};
-  return button;
- }));
- get('targets').textContent='本批收件人 · '+list.length+' 人';
- get('batch').textContent='模擬一鍵寄送 · '+list.length+' 封';
+ get('chips').replaceChildren(...list.map(p=>{const b=el('button',p.sid===selectedSid?'on':'',p.name);
+  b.onclick=()=>{selectedSid=p.sid;for(const x of get('chips').children)x.classList.toggle('on',x===b);preview()};return b}));
+ get('targets').textContent=list.length+' 人';
+ get('batch').textContent='模擬一鍵寄送 '+list.length+' 封';
  const last=historyLog.filter(r=>r.unit===unit&&r.invitation===invitation).at(-1);
- get('report').textContent=last?'上次模擬 · '+last.time+'｜'+last.names.join('、'):'尚無模擬寄送紀錄';
+ get('report').textContent=last?'上次模擬 '+last.time+'｜'+last.names.join('、'):'尚無模擬寄送紀錄';
  preview();
 }
-get('home').onclick=()=>{overview=true;render()};
-get('ledger').onclick=()=>{overview=false;mailing=false;render()};get('mail').onclick=()=>{overview=false;mailing=true;render()};
-get('settled').onclick=()=>{focusPaid=true;render()};get('unpaid').onclick=()=>{focusPaid=false;render()};
-function changeKind(value){invitation=value;renderMail()}
-get('invite').onclick=()=>changeKind(true);get('remind').onclick=()=>changeKind(false);
-
-for(const [id,key] of [['subject','subject'],['bodyText','body']]){
- get(id).oninput=()=>{drafts[Number(invitation)][key]=get(id).value;preview()};
-}
+get('home').onclick=()=>{page='home';render()};
+get('ledger').onclick=()=>{page='ledger';render()};
+get('mail').onclick=()=>{page='mail';render()};
+get('gift').onclick=()=>{page='gift';render()};
+get('unpaid').onclick=()=>{filter='due';render()};get('settled').onclick=()=>{filter='paid';render()};get('everyone').onclick=()=>{filter='all';render()};
+get('invite').onclick=()=>{invitation=true;renderMail()};get('remind').onclick=()=>{invitation=false;renderMail()};
+for(const [id,key] of [['subject','subject'],['bodyText','body']])get(id).oninput=()=>{drafts[Number(invitation)][key]=get(id).value;preview()};
 get('batch').onclick=()=>{
- const list=recipients();
- const record={unit,invitation,time:new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}),names:list.map(p=>p.name)};
+ const list=recipients(),record={unit,invitation,time:new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}),names:list.map(p=>p.name)};
  try{const next=[...historyLog,record];localStorage.setItem(historyKey,JSON.stringify(next));historyLog=next;renderMail()}
  catch{get('report').textContent='無法儲存模擬寄送紀錄。'}
 };
+
+// ───── 右下單位輪盤 ─────
+// 圓心在右下角；外圈沿弧排「全部＋11 個系」。按下放大，滑到哪個系就變橘，放開就換；滑回圓心或滑出去放開＝不換
+// 點一下（沒滑）會停在放大狀態，再點系名換、點圓心收起
+const DU=['',...departments],NS='http://www.w3.org/2000/svg',D=get('dial'),CC=300,TOP=262,SPAN=80,HUB=72,RT=268,FO=296;
+const W=SPAN/DU.length,ANG=DU.map((_,i)=>TOP-(i+.5)*W);
+const P=(r,a)=>[CC+r*Math.cos(a*Math.PI/180),CC+r*Math.sin(a*Math.PI/180)];
+const sv=(n,o,p=D)=>{const e=document.createElementNS(NS,n);for(const k in o)e.setAttribute(k,o[k]);p.append(e);return e};
+const TX=DU.map((d,i)=>{const[x,y]=P(RT,ANG[i]),t=sv('text',{x,y,'text-anchor':'start','dominant-baseline':'middle',transform:`rotate(${ANG[i]-180} ${x} ${y})`,'font-size':15});t.textContent=d?d.replace(/系$/,''):'全部';return t});
+const MK=sv('circle',{r:0,class:'mk'});
+const HB=sv('g',{class:'hub'});{const[hx,hy]=P(34,225);sv('path',{d:'M9 5 4 10l5 5M4 10h10a5 5 0 0 1 0 10h-3',transform:`translate(${hx} ${hy}) scale(1.3) translate(-12 -12.5)`},HB)}
+let open=false,hov=-1,dn=null,onHub=false;
+function markDial(){const c=hov>=0?hov:DU.indexOf(unit);
+ TX.forEach((t,i)=>{const s=i===c&&!onHub;t.style.fontSize=(s?18:15)+'px';t.style.fontWeight=s?700:500;t.style.fill=s?'var(--hot)':onHub?'var(--dim)':'var(--fg)'});
+ HB.classList.toggle('on',onHub);
+ if(open&&c>=0&&!onHub){const[x,y]=P(290,ANG[c]);MK.setAttribute('cx',x);MK.setAttribute('cy',y);MK.setAttribute('r',3.5)}else MK.setAttribute('r',0)}
+function setOpen(v){open=v;D.classList.toggle('mini',!v);get('glass').classList.toggle('mini',!v);if(!v){hov=-1;onHub=false}markDial();
+ if(v&&!matchMedia('(prefers-reduced-motion: reduce)').matches)TX.forEach((t,i)=>t.animate([{opacity:0},{opacity:1}],{duration:220,delay:60+i*24,easing:'ease-out',fill:'backwards'}))}
+function polar(e){const r=D.getBoundingClientRect(),k=300/r.width,x=(e.clientX-r.right)*k,y=(e.clientY-r.bottom)*k;let a=Math.atan2(y,x)*180/Math.PI;if(a<0)a+=360;return{a,r:Math.hypot(x,y)}}
+function track(q){const on=q.r>=HUB&&q.r<=FO&&ANG.some(x=>Math.abs(q.a-x)<=W/2);let i=-1;
+ if(on)ANG.forEach((x,j)=>{if(i<0||Math.abs(q.a-x)<Math.abs(q.a-ANG[i]))i=j});
+ const ch=i!==hov||onHub!==!on;hov=i;onHub=!on;if(ch){markDial();navigator.vibrate?.(4)}}
+function choose(i){unit=DU[i];setOpen(false);render()}
+D.onpointerdown=e=>{D.setPointerCapture?.(e.pointerId);dn={was:open,x:e.clientX,y:e.clientY,moved:false};if(!open)setOpen(true);else track(polar(e))};
+D.onpointermove=e=>{if(!dn)return;if(!dn.moved&&Math.hypot(e.clientX-dn.x,e.clientY-dn.y)<8)return;dn.moved=true;track(polar(e))};
+D.onpointerup=e=>{if(!dn)return;const d=dn;dn=null;
+ if(!d.moved&&!d.was){onHub=false;markDial();return}          // 點一下：停在放大狀態
+ const q=polar(e);track(q);if(hov>=0)choose(hov);else setOpen(false)};
+D.onpointercancel=()=>{dn=null;setOpen(false)};
+D.onkeydown=e=>{const k={ArrowDown:1,ArrowLeft:1,ArrowUp:-1,ArrowRight:-1}[e.key];
+ if(k){e.preventDefault();if(!open)setOpen(true);hov=Math.max(0,Math.min(DU.length-1,(hov<0?DU.indexOf(unit):hov)+k));onHub=false;markDial()}
+ else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(open&&hov>=0)choose(hov);else setOpen(!open)}
+ else if(e.key==='Escape')setOpen(false)};
+document.addEventListener('pointerdown',e=>{if(open&&!dn&&!D.contains(e.target))setOpen(false)});
+setInterval(()=>{if(!get('app').hidden)render()},60000);
+
+// ───── ?demo：假資料預覽外觀，不連試算表 ─────
+function demoCall(body){
+ if(body.action==='login')return Promise.resolve({ok:true,token:'demo'});
+ if(body.action==='paid')return Promise.resolve({ok:true});
+ const codes={'國企系':'59','車輛系':'73','財稅系':'62','土木系':'41','觀光系':'60','機械系':'42','能源系':'72','金資系':'61','資工系':'51','電子系':'52','其他系':'54'};
+ const fam='陳林黃張李王吳劉蔡楊許鄭謝郭洪',giv=['品安','以晴','柏宇','子涵','書妍','宥辰','冠廷','語彤','承恩','芷若'];
+ const ppl=[];let k=0;
+ departments.forEach((d,di)=>{const n=[9,4,6,3,5,14,2,4,8,7,5][di];
+  for(let i=0;i<n;i++,k++){const y=[112,113,114,115][(i+di)%4],c=1+(i%2),code=(d==='機械系'&&i===3)?'73':codes[d],mem=d!=='其他系'&&i%3!==0;
+   ppl.push({no:k,dept:d,member:mem,fee:mem?150:250,sid:'C'+y+'1'+code+c+String(10+i).padStart(2,'0'),
+    name:fam[k%fam.length]+giv[(k*7)%giv.length],diet:['葷食','葷食','素食','有忌口：不吃牛','葷食'][k%5],paid:(k*5)%7<4,gift:['天堂交換','地獄交換',''][k%3]})}});
+ return Promise.resolve({ok:true,people:ppl,wishes:[{wish:'抽大獎',count:31},{wish:'看表演',count:12},{wish:'玩遊戲',count:18},{wish:'吃好料',count:24}],at:new Date().toISOString()});
+}
+// 測試按鈕：不用學號，直接用假資料進後台（不會讀寫真的試算表）
+get('skip').onclick=()=>{DEMO=true;token='demo';load()};
+if(DEMO)token='demo';
 if(token)load();else logout();
 </script></html>
