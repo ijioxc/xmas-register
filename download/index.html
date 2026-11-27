@@ -17,6 +17,11 @@ h1{font:600 22px/1.3 "Songti TC",serif;margin:2px 0 14px}
 .page .meta{font-size:11px;color:#d8c8c0;margin:0 0 8px;flex:1}
 .btn{display:block;text-align:center;text-decoration:none;font-size:13px;font-weight:600;padding:8px 6px;border-radius:7px}
 .post .btn{background:var(--gold);color:var(--wine)}
+.save{margin-top:12px;width:100%;border:0;font:inherit;font-size:15px;font-weight:700;padding:12px;border-radius:9px;background:#fff;color:var(--wine);cursor:pointer}
+.save[disabled]{opacity:.6}
+.hint{font-size:11px;color:#d8c8c0;text-align:center;margin:6px 0 0}
+.howto{margin:10px 0 0;padding:10px 12px;background:rgba(255,255,255,.07);border-radius:9px;font-size:12px;line-height:1.7;color:#f1e6df}
+.howto b{color:var(--gold)}.howto ol{margin:2px 0 6px;padding-left:18px}
 .print{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center}
 .print img{width:96px;aspect-ratio:426/600;object-fit:cover;border-radius:6px;display:block;box-shadow:0 2px 8px rgba(34,21,17,.18)}
 .print .label{color:var(--muted);margin-bottom:2px}.print .label b{color:var(--ink)}
@@ -32,9 +37,43 @@ h1{font:600 22px/1.3 "Songti TC",serif;margin:2px 0 14px}
 <div class="page"><video controls playsinline muted preload="metadata" poster="XMAS-2026-Cover.jpg" src="XMAS-2026-IG-Post.mp4"></video><p class="no">第 1 頁</p><h2>影片</h2><p class="meta">MP4・25.7 秒・10 MB</p><a class="btn" href="XMAS-2026-IG-Post.mp4" download>下載影片</a></div>
 <div class="page"><img src="XMAS-2026-QR.png" alt="報名 QR 圖"><p class="no">第 2 頁</p><h2>報名 QR 圖</h2><p class="meta">PNG・1080×1440</p><a class="btn" href="XMAS-2026-QR.png" download>下載圖片</a></div>
 </div>
+<button class="save" id="save" disabled>準備中…</button>
+<p class="hint" id="hint">按下後會跳出分享選單</p>
+<div class="howto">
+<b>直接發 IG</b>
+<ol><li>按「一鍵存到相簿（兩頁）」</li><li>分享選單上排點 Instagram</li><li>選「貼文」，兩頁會依序放進同一則貼文</li></ol>
+<b>先存到相簿</b>
+<ol><li>按同一顆按鈕</li><li>分享選單往下滑，點「儲存 2 個項目」</li><li>之後在 IG 選相片：先選影片、再選 QR 圖</li></ol>
+</div>
 </section>
 <section class="print">
 <img src="XMAS-2026-A2-preview.jpg" alt="A2 印刷海報">
 <div><p class="label">印刷海報 <b>A2</b></p><p class="meta">PDF・300 dpi・含 3 mm 出血<br>A3、A4 直接等比縮印即可</p><a class="btn" href="XMAS-2026-A2.pdf" download>下載海報 PDF</a></div>
 </section>
-</main></body></html>
+</main>
+<script>
+// 一鍵存到相簿：先載好兩頁檔案，按下時直接叫出分享選單（iPhone 選「儲存 2 個項目」→ 照片 App）
+const btn = document.getElementById('save'), hint = document.getElementById('hint');
+const items = [['XMAS-2026-IG-Post.mp4', 'video/mp4'], ['XMAS-2026-QR.png', 'image/png']];
+let files = null;
+Promise.all(items.map(([name, type]) => fetch(name).then(r => r.blob()).then(b => new File([b], name, { type }))))
+  .then(list => {
+    files = list;
+    if (navigator.canShare && navigator.canShare({ files })) btn.textContent = '一鍵存到相簿（兩頁）';
+    else { btn.textContent = '一次下載兩頁'; hint.textContent = '這個瀏覽器不支援直接存相簿，會改成下載兩個檔案'; }
+    btn.disabled = false;
+  })
+  .catch(() => { btn.textContent = '一次下載兩頁'; btn.disabled = false; });
+btn.onclick = async () => {
+  if (files && navigator.canShare && navigator.canShare({ files })) {
+    try { await navigator.share({ files }); } catch (e) {}
+    return;
+  }
+  for (const [name] of items) {
+    const a = document.createElement('a'); a.href = name; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    await new Promise(r => setTimeout(r, 600));
+  }
+};
+</script>
+</body></html>
