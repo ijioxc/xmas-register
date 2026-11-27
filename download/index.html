@@ -19,6 +19,8 @@ h1{font:600 22px/1.3 "Songti TC",serif;margin:2px 0 14px}
 .post .btn{background:var(--gold);color:var(--wine)}
 .save{margin-top:12px;width:100%;border:0;font:inherit;font-size:15px;font-weight:700;padding:12px;border-radius:9px;background:#fff;color:var(--wine);cursor:pointer}
 .save[disabled]{opacity:.6}
+.btn,.save{transition:background-color .2s,color .2s}
+.post .btn.done,.save.done{background:#2f7d4a;color:#fff}.print .btn.done{background:#2f7d4a}
 .hint{font-size:11px;color:#d8c8c0;text-align:center;margin:6px 0 0}
 .howto{margin:10px 0 0;padding:10px 12px;background:rgba(255,255,255,.07);border-radius:9px;font-size:12px;line-height:1.7;color:#f1e6df}
 .howto b{color:var(--gold)}.howto .ico{width:15px;height:15px;vertical-align:-3px;color:#fff}
@@ -65,11 +67,20 @@ Promise.all(items.map(([name, type]) => fetch(name).then(r => r.blob()).then(b =
     btn.disabled = false;
   })
   .catch(() => { btn.textContent = '一次下載兩頁'; btn.disabled = false; });
+// 按下後打勾停 2.5 秒，再變回原本的字，可以再按一次
+function tick(el, text) {
+  if (el.dataset.label == null) el.dataset.label = el.textContent;
+  clearTimeout(el._tick);
+  el.textContent = text; el.classList.add('done');
+  el._tick = setTimeout(() => { el.textContent = el.dataset.label; el.classList.remove('done'); }, 2500);
+}
+document.querySelectorAll('a.btn[download]').forEach(a => a.addEventListener('click', () => tick(a, '✓ 已下載')));
 btn.onclick = async () => {
   if (files && navigator.canShare && navigator.canShare({ files })) {
-    try { await navigator.share({ files }); } catch (e) {}
+    try { await navigator.share({ files }); tick(btn, '✓ 已存好'); } catch (e) {}
     return;
   }
+  tick(btn, '✓ 已下載');
   for (const [name] of items) {
     const a = document.createElement('a'); a.href = name; a.download = name;
     document.body.append(a); a.click(); a.remove();
