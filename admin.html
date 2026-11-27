@@ -103,19 +103,21 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .filter{display:flex;gap:16px;margin-top:26px}
 .filter button{font:12px var(--mono);letter-spacing:.04em;color:var(--mute)}
 .filter button.on{color:var(--fg);font-weight:700}
-.cls{display:grid;grid-template-columns:5.6em 1fr;gap:0 12px;margin-top:30px}
-.cls>.k{text-align:right;padding-top:9px}
-.cls>.k b{display:block;font-size:15px;font-weight:600}
-.cls>.k span{display:block;font:11px var(--mono);color:var(--mute);margin-top:3px}
-.cls>.v{border-left:1.5px solid var(--rail);padding-left:12px}
-.pp{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 0;border-bottom:1px solid var(--line)}
+.cls{margin-top:22px}
+.cls>.k{display:flex;gap:8px;align-items:baseline;font:11px var(--mono);color:var(--mute);letter-spacing:.04em;padding-bottom:4px;border-bottom:1px solid var(--rail)}
+.cls>.k b{font-weight:600;color:var(--mute)}
+.pp{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 0;border-bottom:1px solid var(--line)}
 .pp:last-child{border-bottom:0}
 .pp .t{flex:1;min-width:0}
-.pp .t b{font-weight:600}
-.pp .t small{display:block;font:11px var(--mono);color:var(--mute);margin-top:2px}
-.pp .fee{font:12px var(--mono);color:var(--mute)}
+.pp .t b{font-size:19px;font-weight:600;letter-spacing:.02em}
+.pp .t small{display:block;font:10px var(--mono);color:var(--dim);margin-top:2px}
+.pp .fee{font:11px var(--mono);color:var(--dim)}
 .pp.paid .t b{font-weight:400;color:var(--past)}
-.pp:disabled{opacity:.4}
+.ck{flex:none;width:48px;height:48px;display:grid;place-items:center;margin-left:8px}
+.ck i{width:28px;height:28px;border-radius:6px;box-shadow:inset 0 0 0 2px var(--fg);display:grid;place-items:center;font-style:normal;font-size:18px;line-height:1;color:var(--bg)}
+.ck[aria-checked=true] i{background:var(--fg)}
+.ck[aria-checked=true] i::after{content:'✓'}
+.ck:disabled{opacity:.4}
 .warn{display:block;font-size:12px;color:var(--hot);margin-top:3px}
 .hint{font-size:12px;color:var(--dim);margin-top:30px}
 .empty{padding:40px 0;text-align:center;color:var(--past);font-size:13px}
@@ -149,7 +151,6 @@ button{border:0;background:none;padding:0;cursor:pointer}
  #hero{grid-template-columns:1fr;justify-items:start}
  .ring{width:132px;height:132px}
  .cols{grid-template-columns:1fr;gap:0}
- .cls{grid-template-columns:4.8em 1fr}
 }
 </style>
 
@@ -186,7 +187,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 <section id="book" hidden>
  <div class="filter"><button id="unpaid"></button><button id="settled"></button><button id="everyone"></button></div>
  <div id="rows"></div>
- <p class="hint">點一下名字切換 ○ 未繳 / ● 已繳</p>
+ <p class="hint">只有右邊方框能勾選已繳；取消勾選會先確認</p>
 </section>
 
 <!-- 交換禮物：兩欄各自的名單 -->
@@ -350,24 +351,25 @@ function renderLedger(list){
  let any=false;
  for(const [k,m] of classGroups(list)){
   const shown=m.filter(show);if(!shown.length)continue;any=true;
-  const box=el('div','cls'),key=el('div','k'),v=el('div','v'),c=m.filter(p=>p.paid).length;
+  const box=el('div','cls'),key=el('div','k'),c=m.filter(p=>p.paid).length;
   key.append(el('b',null,k),el('span',null,c+'/'+m.length));
-  for(const p of shown)v.append(personRow(p));
-  box.append(key,v);rows.append(box);
+  box.append(key);for(const p of shown)box.append(personRow(p));rows.append(box);
  }
  if(!any)rows.append(el('p','empty',filter==='due'?'全部都繳清了':'沒有資料'));
 }
 function personRow(p){
- const b=el('button','pp'+(p.paid?' paid':''));b.setAttribute('aria-pressed',String(p.paid));b.setAttribute('aria-label',p.name+(p.paid?' 已繳費，點一下改成未繳':' 未繳費，點一下改成已繳'));
- const t=el('span','t'),s=parseSid(p.sid);
+ const row=el('div','pp'+(p.paid?' paid':'')),t=el('span','t'),s=parseSid(p.sid);
  t.append(el('b',null,p.name),el('small',null,p.sid+(s?' · '+s.head:'')+(unit?'':' · '+p.dept)));
  const w=mismatch(p);if(w)t.append(el('span','warn',w));
- b.append(el('span','md'+(p.paid?'':' o')),t,el('span','fee','$'+p.fee));
- b.onclick=async()=>{const want=!p.paid;b.disabled=true;get('message').textContent='儲存中…';
+ const b=el('button','ck');b.setAttribute('role','checkbox');b.setAttribute('aria-checked',String(p.paid));b.setAttribute('aria-label',p.name+' 已繳費');b.append(el('i'));
+ row.append(t,el('span','fee','$'+p.fee),b);
+ b.onclick=async()=>{if(b.disabled)return;const want=!p.paid;
+  if(!want&&!confirm('把 '+p.name+' 改回未繳？'))return;
+  b.disabled=true;get('message').textContent='儲存中…';
   const r=await call({action:'paid',token,sid:p.sid,paid:want});b.disabled=false;
   if(r.ok){p.paid=want;get('message').textContent=p.name+' → '+(want?'● 已繳費':'○ 未繳費');render()}
   else if(r.error==='auth')logout('登入已過期，請重新登入。');else get('message').textContent='沒有存到，請再試一次。'};
- return b;
+ return row;
 }
 
 // 交換禮物：天堂｜地獄兩欄，各列出名字；沒填的放下面
