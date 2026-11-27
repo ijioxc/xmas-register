@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聖誕晚會｜收款管理</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f4ef;color:#302b29;font:16px/1.6 system-ui,sans-serif}header{background:#501e2b;color:#fff7e9;padding:24px max(5vw,18px);display:flex;align-items:center;justify-content:space-between}header strong{font:italic clamp(19px,3vw,32px) Georgia,serif}header small{border:1px solid #a17a80;border-radius:20px;padding:3px 12px}main{max-width:980px;margin:auto;padding:30px 18px 70px}h1{font:700 32px/1.3 system-ui;margin:0 0 18px}h2{font-size:20px;margin:0}button,input,select{font:inherit}button,select,input[type=search]{background:white;border:1px solid #cfc7bf;border-radius:7px;padding:8px 12px;color:inherit}button,select,label input{cursor:pointer}button[aria-pressed=true]{background:#501e2b;color:white;border-color:#501e2b}nav,.filters,.stats,.heading{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.heading{justify-content:space-between}.stats{gap:1px;margin:20px 0;background:#dbd3c9;border:1px solid #dbd3c9;border-radius:10px;overflow:hidden}.stats div{background:#fffcf7;flex:1;padding:14px}.stats b{display:block;font:32px Georgia,serif}.panel{margin-top:16px;background:white;padding:20px;border-radius:10px;border:1px solid #dbd3c9}.filters{margin:14px 0}.filters input{flex:1;min-width:150px}.row{display:grid;grid-template-columns:1fr auto auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #e6e1db}.row small{display:block;color:#615852}.row input{width:20px;height:20px;vertical-align:middle;accent-color:#501e2b}.row label{min-width:82px;cursor:pointer}p{margin:10px 0}#copy{white-space:pre-line;background:#faf7f1;padding:14px}#message{color:#6a303c;font-size:14px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #957038}@media(max-width:520px){.panel{padding:14px}.row{gap:8px}.stats div{padding:10px}.filters input{width:100%;flex-basis:100%}}
+
+[hidden]{display:none!important}header{justify-content:flex-start;gap:20px;flex-wrap:wrap}header h1{font-size:16px;margin:0}header small{margin-left:auto}.pills{display:flex;gap:7px;flex-wrap:wrap}.pills button{border-radius:100px}.steps{display:grid;grid-template-columns:1fr 1fr}.steps button{text-align:left;padding:12px 16px}.steps small{display:block;font:12px Georgia;letter-spacing:.09em;margin-bottom:3px}.section{margin-top:16px;padding:12px 16px;border-radius:8px;background:#fbf2ed}.section.collected{background:#eff5ef}.section.muted{background:#f2f2f0;color:#676462}.section h2{font-size:15px}.fields{display:grid;gap:12px;margin-top:18px}.fields label{display:grid;gap:4px;font-weight:600}.fields input,.fields textarea{width:100%;padding:9px;border:1px solid #ccbfb8;border-radius:6px;font:inherit}.sample{background:#faf7f1;padding:16px;border-left:3px solid #80505b;white-space:pre-line}.sample img{max-width:100%;max-height:250px;display:block;margin-top:12px}.action{background:#501e2b;color:white}.action:disabled{opacity:.5}button:focus-visible{outline-offset:2px}
+
+body{background:#f4f4f2;color:#222}header{background:#191919;border-bottom:4px solid #b5353d}.steps{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px}.steps small,.stats b,header strong{font-family:ui-monospace,monospace}.stats b{font-weight:600}.stats div,.panel{background:#fff}button{min-height:44px}button[aria-pressed=true],.action{background:#202020;color:white}.steps button[aria-pressed=true]{box-shadow:inset 0 -3px #ca434d}.bar{height:7px;background:#dededb;border-radius:6px;overflow:hidden;margin-top:4px}.bar i{height:100%;display:block;background:#bc333c}.member i{background:#353535}#chart article{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;padding:12px 0;border-bottom:1px solid #ddd}#chart article div{font-size:14px}#chart article:first-child{font-weight:700}#targets{margin:18px 0 6px}#chips{margin-bottom:20px}.sample{overflow-wrap:anywhere}.fields>*{min-width:0}@media(max-width:600px){.steps button{padding:8px 5px;font-size:14px;text-align:center}#chart article{grid-template-columns:1fr 1fr;gap:5px 12px}#chart article strong{grid-column:span 2}header{gap:5px 10px}header strong{width:100%}.pills{gap:5px}.pills button{padding:6px 10px}}
+</style>
+<header><strong>Christmas in Wonderland</strong><h1>聖誕晚會收款管理</h1><small>示範後台</small></header>
+<main><nav class="steps"><button id="home"><small>OVERVIEW</small>統計首頁</button><button id="ledger"><small>STEP ONE</small>查看收款狀態</button><button id="mail"><small>STEP TWO</small>管理訊息通知</button></nav><div class="pills" id="units" role="group" aria-label="收款單位"></div>
+<div class="stats"><div>報名人數<b id="total"></b></div><div>已繳費<b id="paid"></b></div><div>未繳費<b id="due"></b></div></div>
+<section class="panel" id="dashboard"><h2 id="scope"></h2><div id="chart"></div></section>
+<section class="panel" id="book"><div class="pills"><button id="unpaid">未繳費</button><button id="settled">已繳費</button></div><div id="rows"></div></section>
+<section class="panel" id="composer" hidden><div class="pills"><button id="remind">繳費提醒</button><button id="invite">繳費成功・邀請函</button></div>
+<p id="targets"></p><div class="pills" id="chips" aria-label="預覽收件人"></div><div class="fields"><label>主旨<input id="subject"></label><label>內文<textarea id="bodyText" rows="4"></textarea></label>
+<small>可插入 {姓名}、{倒數}、{收款單位}。倒數依寄送當天的台灣日期計算。</small>
+<div class="sample"><small id="address"></small><br><strong id="headline"></strong><p id="letter"></p></div><button class="action" id="batch"></button><div id="report" role="status"></div></div></section>
+<p id="message" role="status"></p><small>示範名單僅儲存在此瀏覽器。模擬通知不會寄出郵件。</small></main><script>
+const get = id => document.getElementById(id);
+const departments = ['國企系','車輛系','財稅系','土木系','觀光系','機械系','能源系','金資系','資工系','電子系','其他系'];
+const names = ['陳品安','林以晴','黃柏宇','張子涵','許書妍','吳宥辰'];
+const people = departments.flatMap((dept,d) => Array.from({length:3+d%4},(_,i)=>({
+ dept,member:dept!=='其他系' && i%2===0,name:names[(d+i)%names.length],sid:'DEMO'+String(1000+d*10+i),fee:dept==='其他系'||i%2?250:150,paid:i%3===1
+})));
+const storageKey='xmas-admin-demo-v1';
+let saved={};
+try{saved=JSON.parse(localStorage.getItem(storageKey))||{}}catch{}
+for(const p of people) if(typeof saved[p.sid]==='boolean') p.paid=saved[p.sid];
+
+let overview=true, all=true, selectedSid='', unit='機械系', focusPaid=false, mailing=false, invitation=false;
+const drafts=[
+ {subject:'聖誕晚會｜繳費提醒',body:'{姓名}同學你好，報名名單尚未登記收款。請聯絡{收款單位}核對或完成繳費。'},
+ {subject:'距離聖誕晚會{倒數}｜你的邀請函',body:'{姓名}同學你好，已收到你的晚會費用！邀請你在 12/22（二）17:30 來到建工校區中正堂，一起度過 Christmas in Wonderland。'}
+];
+const historyKey='xmas-admin-demo-notices';
+let historyLog=[];
+try{const value=JSON.parse(localStorage.getItem(historyKey));if(Array.isArray(value))historyLog=value}catch{}
+function pressed(id,value){get(id).setAttribute('aria-pressed',String(value))}
+for(const d of ['所有單位',...departments]){
+ const b=document.createElement('button');b.textContent=d==='其他系'?'其他系（主辦方）':d;
+ b.onclick=()=>{all=d==='所有單位';if(!all)unit=d;render()};get('units').append(b);
+}
+function rowFor(p){
+  const row=document.createElement('div');row.className='row';
+  const person=document.createElement('div'),name=document.createElement('strong'),sid=document.createElement('small');
+  name.textContent=p.name;sid.textContent=p.sid;person.append(name,sid);row.append(person);
+  {
+   const amount=document.createElement('span');amount.textContent='$'+p.fee;
+   const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=p.paid;box.setAttribute('aria-label',p.name+'已繳費');
+   box.onchange=()=>{try{const next={...saved,[p.sid]:box.checked};localStorage.setItem(storageKey,JSON.stringify(next));saved=next;p.paid=box.checked;get('message').textContent='已更新 '+p.name+' 的示範紀錄。'}catch{get('message').textContent='無法儲存，請檢查瀏覽器的儲存設定。'}render()};
+   label.append(box,p.paid?' 已繳費':' 未繳費');row.append(amount,label);
+  }
+
+ return row;
+}
+function group(){return people.filter(p=>p.dept===unit)}
+function recipients(){return group().filter(p=>p.paid===invitation)}
+function render(){
+ const list=overview&&all?people:group(), paid=list.filter(p=>p.paid).length;
+ get('total').textContent=list.length;get('paid').textContent=paid;get('due').textContent=list.length-paid;
+ Array.from(get('units').children).forEach((b,i)=>{
+  b.hidden=i===0&&!overview;
+  b.setAttribute('aria-pressed',overview&&all?i===0:departments[i-1]===unit);
+ });
+ pressed('home',overview);pressed('ledger',!overview&&!mailing);pressed('mail',!overview&&mailing);pressed('unpaid',!focusPaid);pressed('settled',focusPaid);
+ get('book').hidden=overview||mailing;get('composer').hidden=overview||!mailing;
+ get('dashboard').hidden=!overview;
+ if(overview){
+  get('scope').textContent=(all?'所有單位':unit)+' · 報名分布';
+  const chart=get('chart');chart.replaceChildren();
+  for(const d of (all?['合計',...departments]:[unit])){
+   const members=d==='合計'?list:list.filter(p=>p.dept===d);
+   const line=document.createElement('article'),heading=document.createElement('strong');
+   heading.textContent=d+'　'+members.length+' 人';line.append(heading);
+   for(const [key,yes,no] of [['paid','已繳','未繳'],['member','會員','非會員']]){
+    const count=members.filter(p=>p[key]).length;
+    const cell=document.createElement('div'),bar=document.createElement('div'),part=document.createElement('i');
+    cell.textContent=yes+' '+count+'　'+no+' '+(members.length-count);
+    bar.className='bar '+key;part.style.width=(members.length?100*count/members.length:0)+'%';bar.append(part);cell.append(bar);line.append(cell);
+   }
+   chart.append(line);
+  }
+ }
+ const rows=get('rows');rows.replaceChildren();
+ for(const status of [focusPaid,!focusPaid]){
+  const block=document.createElement('section'), title=document.createElement('h2');
+  const members=list.filter(p=>p.paid===status);
+  block.className='section'+(status?' collected':'')+(status!==focusPaid?' muted':'');
+  title.textContent=(status?'已繳費':'未繳費')+' · '+members.length+' 人';block.append(title);
+  for(const p of members)block.append(rowFor(p));rows.append(block);
+ }
+ if(mailing)renderMail();
+}
+function fill(template,p){
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());
+ const days=Math.round((Date.parse('2026-12-22')-Date.parse(today))/86400000);
+ return template.replaceAll('{姓名}',p.name).replaceAll('{倒數}',days>0?'倒數 '+days+' 天':days===0?'活動當天':'活動已結束').replaceAll('{收款單位}',unit==='其他系'?'活動主辦方':unit+'系學會');
+}
+function preview(){
+ const list=recipients(),p=list.find(p=>p.sid===selectedSid);
+ get('address').textContent=p?'收件人　'+p.name+'〈'+p.sid+'@nkust.edu.tw〉':'';
+ get('headline').textContent=p?fill(get('subject').value,p):'目前沒有收件人';
+ get('letter').textContent=p?fill(get('bodyText').value,p):'';
+ get('batch').disabled=!p||!get('subject').value.trim()||!get('bodyText').value.trim();
+}
+function renderMail(){
+ const list=recipients(),draft=drafts[Number(invitation)];
+ pressed('invite',invitation);pressed('remind',!invitation);
+ get('subject').value=draft.subject;get('bodyText').value=draft.body;
+ if(!list.some(p=>p.sid===selectedSid))selectedSid=list[0]?.sid||'';
+ get('chips').replaceChildren(...list.map(p=>{
+  const button=document.createElement('button');button.textContent=p.name;
+  button.setAttribute('aria-pressed',p.sid===selectedSid);
+  button.onclick=()=>{selectedSid=p.sid;for(const b of get('chips').children)b.setAttribute('aria-pressed',b===button);preview()};
+  return button;
+ }));
+ get('targets').textContent='本批收件人 · '+list.length+' 人';
+ get('batch').textContent='模擬一鍵寄送 · '+list.length+' 封';
+ const last=historyLog.filter(r=>r.unit===unit&&r.invitation===invitation).at(-1);
+ get('report').textContent=last?'上次模擬 · '+last.time+'｜'+last.names.join('、'):'尚無模擬寄送紀錄';
+ preview();
+}
+get('home').onclick=()=>{overview=true;render()};
+get('ledger').onclick=()=>{overview=false;mailing=false;render()};get('mail').onclick=()=>{overview=false;mailing=true;render()};
+get('settled').onclick=()=>{focusPaid=true;render()};get('unpaid').onclick=()=>{focusPaid=false;render()};
+function changeKind(value){invitation=value;renderMail()}
+get('invite').onclick=()=>changeKind(true);get('remind').onclick=()=>changeKind(false);
+
+for(const [id,key] of [['subject','subject'],['bodyText','body']]){
+ get(id).oninput=()=>{drafts[Number(invitation)][key]=get(id).value;preview()};
+}
+get('batch').onclick=()=>{
+ const list=recipients();
+ const record={unit,invitation,time:new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}),names:list.map(p=>p.name)};
+ try{const next=[...historyLog,record];localStorage.setItem(historyKey,JSON.stringify(next));historyLog=next;renderMail()}
+ catch{get('report').textContent='無法儲存模擬寄送紀錄。'}
+};
+render();
+</script></html>
