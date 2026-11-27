@@ -649,7 +649,7 @@ let MAXPX = +q.get('px') || 1.4e6;   // 會依手機速度自動往下調 (?px= 
 let W = 0, H = 0;
 function measure() {
   const r = stage.getBoundingClientRect();
-  const k = Math.min(devicePixelRatio || 1, 2, Math.sqrt(MAXPX / (r.width * r.height)));
+  const k = devicePixelRatio || 1;
   W = Math.round(r.width * k); H = Math.round(r.height * k);
 }
 let wardrobeRacks;
@@ -854,14 +854,6 @@ async function bench(n = 12) {
 const QBUDGET = +q.get('budget') || 26, MINPX = 0.45e6;
 let ms = await bench();
 const ms0 = ms, px0 = W * H;
-for (let k = 0; k < 4 && !q.has('px') && ms > QBUDGET && MAXPX > MINPX; k++) {
-  const prevPx = MAXPX, prevMs = ms;
-  MAXPX = Math.max(MINPX, MAXPX * Math.min(0.7, (QBUDGET / ms) ** 1.5));
-  measure(); ms = await bench();
-  // 降了像素卻沒變快 → 是被限速 (iPhone 低耗電模式 / 分頁在背景 = 最多 30 fps)，不是手機跑不動：恢復上一級，停止降
-  if (ms > prevMs * 0.85) { MAXPX = prevPx; measure(); ms = prevMs; break; }
-}
-window.__frameMs = ms;
 window.__quality = { ms0: +ms0.toFixed(1), px0, ms: +ms.toFixed(1), px: W * H, W, H };
 console.log(`[入口] 每格 ${ms0.toFixed(0)}→${ms.toFixed(0)} ms，畫布 ${W}×${H} (${(W * H / 1e6).toFixed(2)}M px)`);
 // 不再換 2D 版：慢的手機就用自動降低的畫質跑 3D

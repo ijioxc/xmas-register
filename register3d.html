@@ -7,7 +7,7 @@
 <title>愛理不理 報名</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script type="importmap">
   { "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -58,8 +58,6 @@
     animation: ld-dots .51s linear infinite; }
   @keyframes ld-dots { to { background-position-x: .87em; } }
   .ready #loader { opacity: 0; visibility: hidden; }
-  #stage:not(.loader-positioned) #loader .ld-run,
-  #stage:not(.loader-positioned) #loader .ld-halo { visibility: hidden; }
   .ready #loader .ld-run { transform: scale(.12); }
   #loader .ld-halo { transition: transform var(--loader-exit) cubic-bezier(.45, 0, .7, .35); }
   .ready #loader .ld-halo { transform: translate(-50%, -50%) scale(.12); }
@@ -474,6 +472,20 @@
   .demo { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 6; font-size: 11px; font-weight: 700; letter-spacing: .1em;
     background: var(--ink); color: var(--card); padding: 5px 9px; border-radius: 6px; opacity: .7; display: none; }
   .landed .demo { display: block; }
+  #flatLink { position:absolute; top:65%; left:50%; transform:translateX(-50%); pointer-events:auto; z-index:2; color:white; padding:12px; }
+  .flat #c,.flat .over,.flat #star,.flat #queenTalk,.flat .wardrobe-map { display:none!important; }
+  .flat #stage:has(.step.on[data-step="1"]) #pull { visibility:hidden; }
+  body.flat, .flat #stage { background:#101010; }
+  .flat .sheet.bare, .flat #talk .talk-q, .flat #talk .talk-s { color:#fff; }
+  .flat .card3 { background:#191919; color:white; }
+  .flat .card3 input { background:#282828; color:white; border-color:#ddd; }
+  .flat .card3 input::placeholder { color:#aaa; }
+  .flat .card3 input:focus { outline:2px solid white; }
+  .flat .card3 .err { color:#ffb5b5; }
+  .flat #talk { position:absolute; top:9%; left:5%; width:90%; height:auto; transform:none; color:white; text-align:center; }
+  .flat #talkBg { display:none; }
+  .flat #guestFlat { display:block; margin:8px auto; }
+  #guestFlat { display:none; }
 </style>
 </head>
 <body>
@@ -493,7 +505,7 @@
     <p class="talk-q" lang="en">Christmas in Wonderland</p>
     <p class="talk-s">愛理不理 聖誕有你</p>
   </div>
-  <div id="loader" aria-label="載入中"><div class="ld-dark"></div><div class="ld-halo"></div>
+  <div id="loader" aria-label="載入中"><a id="flatLink" hidden>直接填寫報名表</a><div class="ld-dark"></div><div class="ld-halo"></div>
     <div class="ld-run"><div class="ld-pix"><canvas id="ldg" width="28" height="20"></canvas><canvas id="ldr" width="28" height="20"></canvas></div><p>要遲到了<b></b></p></div></div>
   <script>
     // 像素兔：28×20 小畫布逐格畫 (身體、頭、耳朵、聖誕帽、單片眼鏡、腿)，再補一圈深色外框，放大 5 倍 = 像素風
@@ -605,7 +617,7 @@
         <section class="step on" data-step="1">
           <h3><em>01</em>選你的系所</h3>
           <p class="hint">抽一張牌</p>
-          <div class="depts" id="depts"></div>
+          <div class="depts" id="depts"></div><button id="guestFlat" type="button">其他系</button>
         </section>
 
         <section class="step" data-step="2">
@@ -725,18 +737,7 @@
   </form>
 </div>
 
-<div class="grain"></div>
-<script>
-  // 紙紋顆粒：用裝置像素畫一張雜訊小圖鋪滿 (原本 SVG 濾鏡在 iPhone 用低解析度畫 → 顆粒被放大，整頁像蒙一層粗紋)
-  (() => {
-    const k = Math.min(devicePixelRatio || 1, 3), n = 256, c = document.createElement('canvas'); c.width = c.height = n;
-    const g = c.getContext('2d'), im = g.createImageData(n, n);
-    for (let i = 0; i < im.data.length; i += 4) { const v = 128 + (Math.random() + Math.random() - 1) * 110; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 230; }
-    g.putImageData(im, 0, 0);
-    const el = document.querySelector('.grain');
-    el.style.backgroundImage = `url(${c.toDataURL()})`; el.style.backgroundSize = `${n / k}px ${n / k}px`;
-  })();
-</script>
+
 
 <script>
   // ───────── 報名表單─────────
@@ -1324,15 +1325,23 @@
   else show(1);
   if (st === 'done' && Q.get('face') === 'back') tk.classList.add('flip');
 </script>
-<script type="module">
-  // 已經沒有 2D 版：3D 載不起來 (瀏覽器不支援 WebGL) 就在載入畫面直接說
-  const v = '?v=' + Date.now();
-  import('./src/register3d/entry.js' + v).catch((e) => {
-    console.warn('[入口] 3D 載入失敗', e);
-    const p = document.querySelector('#loader p');
-    if (p) p.innerHTML = '這個瀏覽器打不開<br>請用 Safari 或 Chrome 開啟';
-    document.getElementById('stage').classList.add('loader-positioned');
-  });
+<script>
+  const link = document.getElementById('flatLink');
+  const flatUrl = new URL(location.href);
+  flatUrl.searchParams.set('mode', 'flat');
+  link.href = flatUrl.href;
+  if (new URLSearchParams(location.search).get('mode') === 'flat') {
+    document.body.classList.add('flat', 'ready', 'landed');
+    document.getElementById('guestFlat').onclick = () => dispatchEvent(new Event('entry:guest'));
+    dispatchEvent(new Event('entry:landed'));
+  } else {
+    const offerFlat = () => { if (!window.__ready) link.hidden = false; };
+    const timer = setTimeout(offerFlat, 5000);
+    import('./src/register3d/entry.js').then(() => clearTimeout(timer)).catch(() => {
+      clearTimeout(timer);
+      offerFlat();
+    });
+  }
 </script>
 </body>
 </html>
