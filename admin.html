@@ -9,27 +9,40 @@
 
 body{background:#f4f4f2;color:#222}header{background:#191919;border-bottom:4px solid #b5353d}.steps{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px}.steps small,.stats b,header strong{font-family:ui-monospace,monospace}.stats b{font-weight:600}.stats div,.panel{background:#fff}button{min-height:44px}button[aria-pressed=true],.action{background:#202020;color:white}.steps button[aria-pressed=true]{box-shadow:inset 0 -3px #ca434d}.bar{height:7px;background:#dededb;border-radius:6px;overflow:hidden;margin-top:4px}.bar i{height:100%;display:block;background:#bc333c}.member i{background:#353535}#chart article{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;padding:12px 0;border-bottom:1px solid #ddd}#chart article div{font-size:14px}#chart article:first-child{font-weight:700}#targets{margin:18px 0 6px}#chips{margin-bottom:20px}.sample{overflow-wrap:anywhere}.fields>*{min-width:0}@media(max-width:600px){.steps button{padding:8px 5px;font-size:14px;text-align:center}#chart article{grid-template-columns:1fr 1fr;gap:5px 12px}#chart article strong{grid-column:span 2}header{gap:5px 10px}header strong{width:100%}.pills{gap:5px}.pills button{padding:6px 10px}}
 </style>
-<header><strong>Christmas in Wonderland</strong><h1>聖誕晚會收款管理</h1><small>示範後台</small></header>
-<main><nav class="steps"><button id="home"><small>OVERVIEW</small>統計首頁</button><button id="ledger"><small>STEP ONE</small>查看收款狀態</button><button id="mail"><small>STEP TWO</small>管理訊息通知</button></nav><div class="pills" id="units" role="group" aria-label="收款單位"></div>
+<header><strong>Christmas in Wonderland</strong><h1>聖誕晚會收款管理</h1><small>收款後台</small><a href="register3d.html" style="color:inherit;padding:8px">返回活動首頁</a></header>
+<form id="login" class="panel" style="max-width:360px;margin:40px auto"><h2>收款人登入</h2>
+<label>學號<input id="lsid" autocomplete="username" required></label><br>
+<button class="action">登入</button><p id="lmsg" role="status"></p></form>
+<main hidden><nav class="steps"><button id="home"><small>OVERVIEW</small>統計首頁</button><button id="ledger"><small>STEP ONE</small>查看收款狀態</button><button id="mail"><small>STEP TWO</small>管理訊息通知</button></nav><div class="pills" id="units" role="group" aria-label="收款單位"></div>
 <div class="stats"><div>報名人數<b id="total"></b></div><div>已繳費<b id="paid"></b></div><div>未繳費<b id="due"></b></div></div>
-<section class="panel" id="dashboard"><h2 id="scope"></h2><div id="chart"></div></section>
+<section class="panel" id="dashboard"><h2 id="scope"></h2><div id="chart"></div><h2>交換禮物</h2><div id="gifts"></div><h2>許願池 <small>（匿名，全部單位合計）</small></h2><div id="wishes"></div></section>
 <section class="panel" id="book"><div class="pills"><button id="unpaid">未繳費</button><button id="settled">已繳費</button></div><div id="rows"></div></section>
 <section class="panel" id="composer" hidden><div class="pills"><button id="remind">繳費提醒</button><button id="invite">繳費成功・邀請函</button></div>
 <p id="targets"></p><div class="pills" id="chips" aria-label="預覽收件人"></div><div class="fields"><label>主旨<input id="subject"></label><label>內文<textarea id="bodyText" rows="4"></textarea></label>
 <small>可插入 {姓名}、{倒數}、{收款單位}。倒數依寄送當天的台灣日期計算。</small>
 <div class="sample"><small id="address"></small><br><strong id="headline"></strong><p id="letter"></p></div><button class="action" id="batch"></button><div id="report" role="status"></div></div></section>
-<p id="message" role="status"></p><small>示範名單僅儲存在此瀏覽器。模擬通知不會寄出郵件。</small></main><script>
+<p id="message" role="status"></p><small>名單直接讀寫 Google 試算表。訊息通知目前仍是模擬，不會寄出郵件。</small></main><script>
 const get = id => document.getElementById(id);
 const departments = ['國企系','車輛系','財稅系','土木系','觀光系','機械系','能源系','金資系','資工系','電子系','其他系'];
 const names = ['陳品安','林以晴','黃柏宇','張子涵','許書妍','吳宥辰'];
-const people = departments.flatMap((dept,d) => Array.from({length:3+d%4},(_,i)=>({
- dept,member:dept!=='其他系' && i%2===0,name:names[(d+i)%names.length],sid:'DEMO'+String(1000+d*10+i),fee:dept==='其他系'||i%2?250:150,paid:i%3===1
-})));
-const storageKey='xmas-admin-demo-v1';
-let saved={};
-try{saved=JSON.parse(localStorage.getItem(storageKey))||{}}catch{}
-for(const p of people) if(typeof saved[p.sid]==='boolean') p.paid=saved[p.sid];
-
+const API=new URLSearchParams(location.search).get('api')??'https://script.google.com/macros/s/AKfycbyjaxHCTrjMPn6Y62yRuPg3bq7Gox0zjIlHZrppvt1BVDnB9n5xwEl5H8WQasu7YLUh/exec';
+const call=body=>fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>({ok:false,error:'net'}));
+let people=[], wishes=[], token='';
+try{token=sessionStorage.getItem('xmas-admin-token')||''}catch{}
+async function load(){
+ get('message').textContent='讀取名單中…';
+ const r=await call({action:'list',token});
+ if(!r.ok){if(r.error==='auth')logout('登入已過期，請重新登入。');else get('message').textContent='讀不到名單，請檢查網路後重新整理。';return}
+ people=r.people;wishes=r.wishes||[];get('login').hidden=true;document.querySelector('main').hidden=false;
+ get('message').textContent='名單更新於 '+new Date(r.at).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei'});render();
+}
+function logout(msg){token='';try{sessionStorage.removeItem('xmas-admin-token')}catch{};document.querySelector('main').hidden=true;get('login').hidden=false;get('lmsg').textContent=msg||''}
+get('login').onsubmit=async e=>{
+ e.preventDefault();get('lmsg').textContent='登入中…';
+ const r=await call({action:'login',sid:get('lsid').value.trim().toUpperCase()});
+ if(!r.ok){get('lmsg').textContent=r.error==='net'?'連不上伺服器。':'這個學號沒有後台權限。';return}
+ token=r.token;try{sessionStorage.setItem('xmas-admin-token',token)}catch{};load();
+};
 let overview=true, all=true, selectedSid='', unit='機械系', focusPaid=false, mailing=false, invitation=false;
 const drafts=[
  {subject:'聖誕晚會｜繳費提醒',body:'{姓名}同學你好，報名名單尚未登記收款。請聯絡{收款單位}核對或完成繳費。'},
@@ -50,7 +63,10 @@ function rowFor(p){
   {
    const amount=document.createElement('span');amount.textContent='$'+p.fee;
    const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=p.paid;box.setAttribute('aria-label',p.name+'已繳費');
-   box.onchange=()=>{try{const next={...saved,[p.sid]:box.checked};localStorage.setItem(storageKey,JSON.stringify(next));saved=next;p.paid=box.checked;get('message').textContent='已更新 '+p.name+' 的示範紀錄。'}catch{get('message').textContent='無法儲存，請檢查瀏覽器的儲存設定。'}render()};
+   box.onchange=async()=>{const want=box.checked;box.disabled=true;get('message').textContent='儲存中…';
+    const r=await call({action:'paid',token,sid:p.sid,paid:want});box.disabled=false;
+    if(r.ok){p.paid=want;get('message').textContent='已更新 '+p.name+'：'+(want?'已繳費':'未繳費');render()}
+    else{box.checked=!want;if(r.error==='auth')logout('登入已過期，請重新登入。');else get('message').textContent='沒有存到，請再試一次。'}};
    label.append(box,p.paid?' 已繳費':' 未繳費');row.append(amount,label);
   }
 
@@ -83,6 +99,11 @@ function render(){
    }
    chart.append(line);
   }
+  const bars=(box,items)=>{box.replaceChildren();const sum=items.reduce((a,x)=>a+x[1],0);
+   for(const [label,count] of items){const cell=document.createElement('div'),bar=document.createElement('div'),part=document.createElement('i');
+    cell.textContent=label+'　'+count+' 人';bar.className='bar';part.style.width=(sum?100*count/sum:0)+'%';bar.append(part);cell.append(bar);cell.style.margin='8px 0';box.append(cell)}};
+  bars(get('gifts'),[['天堂交換',list.filter(p=>p.gift==='天堂交換').length],['地獄交換',list.filter(p=>p.gift==='地獄交換').length],['未填（舊報名）',list.filter(p=>!p.gift).length]]);
+  bars(get('wishes'),wishes.map(w=>[w.wish,w.count]));
  }
  const rows=get('rows');rows.replaceChildren();
  for(const status of [focusPaid,!focusPaid]){
@@ -138,5 +159,5 @@ get('batch').onclick=()=>{
  try{const next=[...historyLog,record];localStorage.setItem(historyKey,JSON.stringify(next));historyLog=next;renderMail()}
  catch{get('report').textContent='無法儲存模擬寄送紀錄。'}
 };
-render();
+if(token)load();else logout();
 </script></html>

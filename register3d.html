@@ -237,6 +237,13 @@
   .diet .opt { width: min(28cqw, 30cqh); gap: 8px; }
   .diet .opt b { font-family: 'Noto Sans TC'; font-weight: 900; font-size: min(12cqw, 10cqh); letter-spacing: 0; line-height: 1; }
   .diet .opt .lb { font-size: 13px; letter-spacing: .04em; }
+  /* 交換禮物：兩張牌，大字 天堂／地獄 */
+  .gift .opt b { font-family: 'Noto Sans TC'; font-weight: 900; font-size: min(11cqw, 9cqh); letter-spacing: .02em; line-height: 1; }
+  /* 許願：四張更窄的牌 */
+  .wish { gap: 7px; }
+  .wish .opt { width: min(21cqw, 24cqh); gap: 6px; }
+  .wish .opt b { font-size: min(9cqw, 8cqh); }
+  .wish .opt .lb { font-size: 12px; letter-spacing: 0; }
   .member .opt:has(input:checked) { background: var(--heart); color: var(--card); filter: none;
     transform: translateY(-16px) rotate(0deg) rotateX(0deg) translateZ(40px) scale(1.06);
     box-shadow: 0 1px 0 #7d151b, 0 2px 0 #6a1015, 0 3px 0 #560c10, 0 18px 22px rgba(0, 0, 0, .55), 0 34px 40px rgba(0, 0, 0, .3); }
@@ -244,7 +251,7 @@
   .opt:has(input:checked) .s { color: var(--card); }
 
   /* 學號姓名：寫在一張牌上 */
-  .step[data-step="5"] { perspective: 1000px; }
+  .step[data-step="7"] { perspective: 1000px; }
   /* 服裝指引：紙娃娃站在牌桌上 (src/register3d/dress.js) */
   .step[data-step="3"].on { position: absolute; left: 0; right: 0; bottom: 0; top: 0; }
   .step[data-step="3"].on { display:flex; align-items:flex-end; justify-content:center; padding-bottom:calc(38px + env(safe-area-inset-bottom)); pointer-events:none; }
@@ -602,7 +609,7 @@
     <div class="ix r">♠</div>
     <div class="head">
       <div class="eyebrow" id="eyebrow">報名 ENTRY</div>
-      <div class="bars"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      <div class="bars"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <!-- 傳令兔的對話框：尾巴由 JS 算，指到棋盤上的兔子 -->
       <div class="talk" id="talk" aria-live="polite">
         <svg class="talk-bg" id="talkBg" aria-hidden="true"></svg>
@@ -640,7 +647,27 @@
         </section>
 
         <section class="step" data-step="5">
-          <h3><em>04</em>你是誰</h3>
+          <h3><em>04</em>交換禮物</h3>
+          <p class="hint">天堂還是地獄</p>
+          <div class="member gift">
+            <label class="opt pc" style="--rot:-4deg;--i:0"><input type="radio" name="gift" value="天堂交換"><span class="s tl r">♥</span><b>天堂</b><span class="lb">送實用好禮</span><span class="s br r">♥</span></label>
+            <label class="opt pc" style="--rot:4deg;--i:1"><input type="radio" name="gift" value="地獄交換"><span class="s tl">♠</span><b>地獄</b><span class="lb">送惡搞怪禮</span><span class="s br">♠</span></label>
+          </div>
+        </section>
+
+        <section class="step" data-step="6">
+          <h3><em>05</em>活動許願</h3>
+          <p class="hint">匿名</p>
+          <div class="member diet wish">
+            <label class="opt pc" style="--rot:-6deg;--i:0"><input type="radio" name="wish" value="抽大獎"><span class="s tl r">♥</span><b>獎</b><span class="lb">抽大獎</span><span class="s br r">♥</span></label>
+            <label class="opt pc" style="--rot:-2deg;--i:1"><input type="radio" name="wish" value="看表演"><span class="s tl">♠</span><b>演</b><span class="lb">看表演</span><span class="s br">♠</span></label>
+            <label class="opt pc" style="--rot:2deg;--i:2"><input type="radio" name="wish" value="玩遊戲"><span class="s tl r">♦</span><b>玩</b><span class="lb">玩遊戲</span><span class="s br r">♦</span></label>
+            <label class="opt pc" style="--rot:6deg;--i:3"><input type="radio" name="wish" value="吃好料"><span class="s tl">♣</span><b>吃</b><span class="lb">吃好料</span><span class="s br">♣</span></label>
+          </div>
+        </section>
+
+        <section class="step" data-step="7">
+          <h3><em>06</em>你是誰</h3>
           <p class="hint">繳費時對名單用</p>
           <div class="card3 pc" style="--rot:-1.5deg">
           <span class="s tl">♣</span>
@@ -765,15 +792,15 @@
   const val = () => {
     const member = form.querySelector('[name=member]:checked');
     const diet = form.querySelector('[name=diet]:checked')?.value || '', note = diet && diet !== '葷食' ? $('#dietNote').value.trim() : '';
-    const base = { diet, note, sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
+    const base = { diet, note, gift: form.querySelector('[name=gift]:checked')?.value || '', wish: form.querySelector('[name=wish]:checked')?.value || '', sid: $('#sid').value.trim().toUpperCase(), name: $('#name').value.trim() };
     if (form.dept.value === GUEST) return { dept: GUEST, member: '非系會員', fee: '250', ...base };
     return { dept: form.dept.value, member: member?.value || '', fee: member?.dataset.fee || '', ...base };
   };
   const SID_OK = /^[A-Z0-9]{8,12}$/;
 
-  // 一次一題：1 系所 → 2 會員 → 3 服裝 (K/Q 紙娃娃) → 4 飲食 → 5 學號姓名 (其他系跳過 2)
+  // 一次一題：1 系所 → 2 會員 → 3 服裝 (K/Q 紙娃娃) → 4 飲食 → 5 交換禮物 → 6 許願 → 7 學號姓名 (其他系跳過 2)
   let step = 1, submitting = false;
-  const SUIT_OF = ['♠', '♥', '♦', '♣', '♠'];
+  const SUIT_OF = ['♠', '♥', '♦', '♣', '♥', '♦', '♠'];
   function show(n, dir = 1) {
     if (n === 3 && dir > 0 && step !== 3 && !wardrobeEgg.isConnected) {
       delete fittingStep.dataset.family;
@@ -798,7 +825,7 @@
     });
     document.querySelectorAll('.bars i').forEach((b, i) => b.classList.toggle('on', i < n));
     $('.ix.r').textContent = SUIT_OF[n - 1] || '♠';
-    $('.ix.r').style.color = n === 2 || n === 3 ? 'var(--heart)' : '';
+    $('.ix.r').style.color = n === 2 || n === 3 || n === 5 || n === 6 ? 'var(--heart)' : '';
     $('#pullTx').textContent = n === 1 ? '下拉回到封面' : '下拉回上一題';
     form.classList.add('bare');   // 全程沒有外框：題目都是浮在棋盤上的牌
     if (n !== 1 || dir < 0) form.classList.remove('first');
@@ -809,7 +836,7 @@
     else if (n === 3) {
       for (const card of outfitCards) card.setAttribute('aria-pressed', 'false');
     }
-    if (n === 5) noteField();
+    if (n === 7) noteField();
     refresh();
     window.placeGuestBtn?.();
   }
@@ -821,7 +848,9 @@
     2: ['系學會會員嗎？', '這決定你的報名費。'],
     3: ['MR. or MS.?', 'Dress code · 服裝規範'],
     4: ['有沒有忌口？', '晚會有餐點，幫你備對的那份。'],
-    5: ['報上名來！', '繳費時要對名單。'],
+    5: ['天堂還是地獄？', '交換禮物請先包裝好，簽到時會檢查。'],
+    6: ['許個願吧！', '匿名的，只會算進許願池，不會知道是誰。'],
+    7: ['報上名來！', '繳費時要對名單。'],
     guest: ['不請自來也歡迎！', '其他系 250 元。先選 K 或 Q，查看晚宴穿搭。'],
   };
   const talk = $('#talk');
@@ -933,7 +962,7 @@
   function refresh() {
     const v = val();
     $('#send').disabled = submitting || !(v.sid && v.name && (v.diet !== '有忌口' || v.note));
-    $('#sum').innerHTML = `${v.dept}${v.member ? '・' + v.member : ''}${v.diet ? '・' + v.diet : ''}${v.fee ? `<br>報名費 <b>${v.fee}</b> 元` : ''}`;
+    $('#sum').innerHTML = `${v.dept}${v.member ? '・' + v.member : ''}${v.diet ? '・' + v.diet : ''}${v.gift ? '・' + v.gift : ''}${v.fee ? `<br>報名費 <b>${v.fee}</b> 元` : ''}`;
   }
   form.addEventListener('input', refresh);
   form.addEventListener('change', refresh);
@@ -958,7 +987,7 @@
   form.addEventListener('pointerdown', (e) => { const l = e.target.closest?.('.dept, .opt'); wasOn = l ? l.querySelector('input').checked && l : null; });
   form.addEventListener('click', (e) => {
     const r = e.target;
-    if (!r.matches?.('input[type=radio]') || step === 3 || step > 4) return;
+    if (!r.matches?.('input[type=radio]') || step === 3 || step > 6) return;
     const at = step; clearTimeout(auto);
     if (wasOn && wasOn.contains(r)) { r.checked = false; wasOn = null; refresh(); window.__guestSel?.(false);
       if (at === 1) window.setDepartmentStage?.(true);
@@ -970,9 +999,9 @@
   });
   // 點牌以外的地方 = 取消這一題的選取 (第一、二題)
   $('#stage').addEventListener('click', (e) => {
-    if (!body.classList.contains('landed') || body.classList.contains('is-done') || step === 3 || step > 4) return;
+    if (!body.classList.contains('landed') || body.classList.contains('is-done') || step === 3 || step > 6) return;
     if (e.target.closest('.dept, .opt, #guestBtn, input, button, a, textarea, select')) return;
-    const on = form.querySelector(['', '[name=dept]:checked', '[name=member]:checked', '', '[name=diet]:checked'][step]);
+    const on = form.querySelector(['', '[name=dept]:checked', '[name=member]:checked', '', '[name=diet]:checked', '[name=gift]:checked', '[name=wish]:checked'][step]);
     if (!on) return;
     clearTimeout(auto); on.checked = false; refresh(); placeGuestBtn(); window.__guestSel?.(false);
     if (step === 1) window.setDepartmentStage?.(true);
@@ -1151,7 +1180,7 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (step !== 5 || submitting || body.classList.contains('is-done')) return;
+    if (step !== 7 || submitting || body.classList.contains('is-done')) return;
     const v = val();
     if (!SID_OK.test(v.sid)) { $('#sidErr').textContent = '學號格式不對，請再檢查'; $('#sid').focus(); return; }
     if (!v.name) { $('#nameErr').textContent = '請填姓名'; $('#name').focus(); return; }
@@ -1163,7 +1192,7 @@
     if (SUBMIT_URL) {
       // Apps Script v5 回傳 { ok, no, dept, member, fee, name, sid, again? } 或 { ok:false, error }；用 text/plain 送，避開跨網域預檢
       const diet = v.note ? v.diet + '：' + v.note : v.diet;   // 試算表「飲食」欄：素食 / 有忌口：不吃牛
-      const data = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, diet, website: form.website.value });
+      const data = JSON.stringify({ dept: v.dept, member: v.member, sid: v.sid, name: v.name, diet, gift: v.gift, wish: v.wish, website: form.website.value });
       const r = await fetch(SUBMIT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: data })
         .then((x) => x.json()).catch(() => null);
       if (!r || !r.ok) {
@@ -1174,7 +1203,7 @@
         };
         $('#msg').textContent = ERR[r?.error] || '網路不穩，沒有送出成功，請再按一次。';
         submitting = false;
-        show(5);
+        show(7);
         return;
       }
       no = r.no;
@@ -1316,12 +1345,12 @@
     show(4);
   });
 
-  // 檢查用：?step=1/2/3/4/5/done 直接停在棋盤定格＋那一題 (3 = 服裝，也可寫 dress；加 &look=m/f 直接看紙娃娃)
+  // 檢查用：?step=1~7/done 直接停在棋盤定格＋那一題 (3 = 服裝，也可寫 dress；加 &look=m/f 直接看紙娃娃)
   const st = Q.get('step');
   // ?step=done&no=0 看 0 號；加 &again 看「已經報名過」提示
   if (st === 'done') showDone({ name: '王小明', dept: '資工系', member: '系會員', sid: 'C112123456', fee: '150' }, Q.has('no') ? +Q.get('no') : 37, Q.has('again'));
   else if (st === 'dress') { show(3); if (Q.get('look')) pickLook(Q.get('look')); }
-  else if (st) show(Math.min(5, Math.max(1, +st)));
+  else if (st) show(Math.min(7, Math.max(1, +st)));
   else show(1);
   if (st === 'done' && Q.get('face') === 'back') tk.classList.add('flip');
 </script>
